@@ -1,0 +1,11 @@
+{
+  "name": "devdigest/onion-architecture",
+  "version": "0.1.0",
+  "private": true,
+  "summary": "Forces Onion Architecture dependency direction in this repo's backend packages (server/, reviewer-core/): domain and application logic stay framework-free at the center, Fastify/Drizzle/HTTP/external clients stay at the rim as swappable adapters behind interfaces, and all coupling points inward. Use when adding a module, writing a service.ts/repository.ts, deciding whether a Fastify or Drizzle type may appear in business logic, wiring a new adapter into platform/container.ts, or reviewing whether a change leaks infrastructure into the domain.",
+  "skills": {
+    "onion-architecture": {
+      "path": "SKILL.md"
+    }
+  }
+}

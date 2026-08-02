@@ -45,7 +45,17 @@ what the UI needs. `reviewer-core` keeps no copy — its tsconfig points at serv
 
 ## Framework conventions
 Live in `.claude/skills/` (drizzle, fastify, zod, react, postgresql, typescript,
-next, security). Never restate them in a CLAUDE.md.
+next, security, frontend-architecture, onion-architecture). Never restate them in a CLAUDE.md.
+
+### Creating or editing a skill
+Write the domain content by hand (research, decisions) — the `skill-creator`
+skill doesn't substitute for that. Once a skill has a draft, run
+`skill-creator` (`anthropic-skills:skill-creator`) as a **QA gate before
+calling it done**: it validates `SKILL.md` structure/frontmatter and checks
+the `description` for triggering accuracy against sibling skills already in
+`.claude/skills/` (overlap/ambiguity, missing keywords). Do this for new
+skills and for edits that change scope or add a section, not just at
+creation time.
 
 ## Session protocol — INSIGHTS.md
 Every package has an append-only `INSIGHTS.md` next to its `CLAUDE.md`.
