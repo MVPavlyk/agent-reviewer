@@ -63,6 +63,12 @@ export function FindingsTab({
     [onDelete],
   );
 
+  const costByRunId = React.useMemo(() => {
+    const m = new Map<string, number | null>();
+    for (const r of prRuns ?? []) m.set(r.run_id, r.cost_usd);
+    return m;
+  }, [prRuns]);
+
   // Timeline → Review-runs navigation: clicking an agent name in the timeline
   // opens + scrolls to that run's accordion below. The nonce re-triggers the
   // scroll even when the same run is clicked twice.
@@ -164,6 +170,7 @@ export function FindingsTab({
             headSha={headSha}
             targetRunId={target?.runId ?? null}
             targetNonce={target?.n ?? 0}
+            costUsd={review.run_id ? costByRunId.get(review.run_id) ?? null : null}
           />
         ))
       )}

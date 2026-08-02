@@ -1,8 +1,9 @@
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
-import { and, desc, eq, inArray } from 'drizzle-orm';
+import { and, desc, eq, inArray, sum } from 'drizzle-orm';
 import type { PrMeta, PrDetail, GitHubClient, PrReviewComment } from '@devdigest/shared';
 import { PrCommentInput } from '@devdigest/shared';
+import type { Db } from '../../db/client.js';
 import * as t from '../../db/schema.js';
 import { getContext } from '../_shared/context.js';
 import { IdParams } from '../_shared/schemas.js';
@@ -129,6 +130,8 @@ export default async function pullsRoutes(appBase: FastifyInstance) {
       }
     }
 
+    const costByPrId = await costByPr(container.db, prIds);
+
     const now = Date.now();
     return rows.map((r) => {
       const review = latestReviewByPr.get(r.id);
@@ -153,6 +156,7 @@ export default async function pullsRoutes(appBase: FastifyInstance) {
         opened_at: r.openedAt?.toISOString() ?? null,
         updated_at: r.updatedAt?.toISOString() ?? null,
         score: review ? review.score : null,
+        cost_usd: costByPrId.get(r.id) ?? null,
       };
     });
   });
@@ -321,4 +325,21 @@ export default async function pullsRoutes(appBase: FastifyInstance) {
       }
     },
   );
+}
+
+/** SUM(cost_usd) per PR. Postgres' SUM skips NULLs and returns NULL when every
+ *  row is NULL, so a PR with no priced run is absent from the map. */
+async function costByPr(db: Db, prIds: string[]): Promise<Map<string, number>> {
+  const out = new Map<string, number>();
+  if (prIds.length === 0) return out;
+  const rows = await db
+    .select({ prId: t.agentRuns.prId, cost: sum(t.agentRuns.costUsd) })
+    .from(t.agentRuns)
+    .where(inArray(t.agentRuns.prId, prIds))
+    .groupBy(t.agentRuns.prId);
+  for (const r of rows) {
+    const n = r.cost == null ? null : Number(r.cost);
+    if (r.prId && n != null && Number.isFinite(n)) out.set(r.prId, n);
+  }
+  return out;
 }
