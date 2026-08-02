@@ -11,6 +11,7 @@ import type { ReviewRecord, Verdict } from "@devdigest/shared";
 import { FindingsPanel } from "../FindingsPanel";
 import { VerdictBanner } from "../VerdictBanner";
 import { RunCostBadge } from "@/components/run-cost-badge";
+import type { SeverityLevel } from "@/components/severity-counts";
 import { useDeleteReview } from "@/lib/hooks";
 
 const VERDICT_COLOR: Record<string, string> = {
@@ -33,6 +34,8 @@ export function ReviewRunAccordion({
   targetRunId = null,
   targetNonce = 0,
   costUsd = null,
+  severityFilter = null,
+  focusFindingId = null,
 }: {
   review: ReviewRecord;
   prId: string;
@@ -44,6 +47,13 @@ export function ReviewRunAccordion({
   targetRunId?: string | null;
   targetNonce?: number;
   costUsd?: number | null;
+  /** Severity selected in the PR-detail counter row — narrows this run's
+   *  FindingsPanel to just that level. The header's own N findings · M
+   *  blockers counts stay unfiltered (they describe the run, not the view). */
+  severityFilter?: SeverityLevel | null;
+  /** A finding targeted via `?findingItem` (Timeline popover click) — expanded
+   *  by default in the panel below, regardless of its position in the list. */
+  focusFindingId?: string | null;
 }) {
   const [open, setOpen] = React.useState(defaultOpen);
   const rootRef = React.useRef<HTMLDivElement | null>(null);
@@ -156,6 +166,8 @@ export function ReviewRunAccordion({
             prId={prId}
             repoFullName={repoFullName}
             headSha={headSha}
+            severityFilter={severityFilter}
+            focusFindingId={focusFindingId}
           />
         </div>
       )}

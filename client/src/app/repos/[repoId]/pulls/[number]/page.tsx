@@ -22,6 +22,7 @@ import { useActiveRepo, useRepoNotFound } from "../../../../../lib/repo-context"
 import { ApiError } from "../../../../../lib/api";
 import { githubPrUrl } from "../../../../../lib/github-urls";
 import type { FindingRecord } from "@devdigest/shared";
+import { countBySeverity, parseSeverityParam } from "@/components/severity-counts";
 
 export default function PRDetailPage() {
   const params = useParams<{ repoId: string; number: string }>();
@@ -59,6 +60,8 @@ export default function PRDetailPage() {
 
   const tab = search.get("tab") ?? "overview";
   const traceRunId = search.get("trace");
+  const sev = parseSeverityParam(search.get("sev"));
+  const findingItem = search.get("findingItem");
   const setParam = (key: string, val: string | null) => {
     const sp = new URLSearchParams(search.toString());
     if (val == null) sp.delete(key);
@@ -71,10 +74,11 @@ export default function PRDetailPage() {
   const runs = reviews ?? [];
   const allFindings: FindingRecord[] = React.useMemo(
     () => runs.flatMap((r) => r.findings),
-    [reviews],
+    [runs],
   );
   const lethalTrifecta = allFindings.filter((f) => f.kind === "lethal_trifecta");
   const findingsCount = allFindings.length;
+  const severityCounts = React.useMemo(() => countBySeverity(allFindings), [allFindings]);
 
   const repoName = activeRepo?.full_name ?? repoId;
   // The real "owner/repo" (null until the repo is loaded) — used to build
@@ -139,6 +143,8 @@ export default function PRDetailPage() {
         {tab === "findings" && (
           <FindingsTab
             prId={prId}
+            repoId={repoId}
+            prNumber={pr.number}
             liveRunIds={liveRunIds}
             reviewRunning={reviewRunning}
             lethalTrifecta={lethalTrifecta}
@@ -147,6 +153,11 @@ export default function PRDetailPage() {
             prCommits={pr.commits}
             repoFullName={repoFullName}
             headSha={pr.head_sha}
+            severityCounts={severityCounts}
+            selectedSeverity={sev}
+            onSelectSeverity={(level) => setParam("sev", level)}
+            focusFindingId={findingItem}
+            onFocusedFindingHandled={() => setParam("findingItem", null)}
             cancelMutation={cancel}
             onOpenTrace={(id) => setParam("trace", id)}
             onDelete={(id) => {

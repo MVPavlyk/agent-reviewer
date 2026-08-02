@@ -18,6 +18,10 @@
     "prTitle": "Total spent reviewing this PR",
     "runTitle": "Tokens and cost for this run"
   },
+  "severityCounts": {
+    "showOnly": "Show only {level} findings",
+    "clearFilter": "Clear severity filter"
+  },
   "repoNotFound": {
     "title": "No repo selected",
     "body": "This repository isn't in your workspace — it may have been removed, or the link is stale. Add a repo or pick another from the switcher to get started.",

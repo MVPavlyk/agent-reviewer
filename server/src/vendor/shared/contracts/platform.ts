@@ -154,6 +154,14 @@ export type Repo = z.infer<typeof Repo>;
 export const PrStatus = z.enum(['needs_review', 'reviewed', 'stale', 'open', 'closed', 'merged']);
 export type PrStatus = z.infer<typeof PrStatus>;
 
+/** Per-severity finding tally (dismissed findings excluded). */
+export const SeverityCounts = z.object({
+  critical: z.number().int(),
+  warning: z.number().int(),
+  suggestion: z.number().int(),
+});
+export type SeverityCounts = z.infer<typeof SeverityCounts>;
+
 export const PrMeta = z.object({
   id: z.string().nullish(),
   number: z.number().int(),
@@ -171,6 +179,9 @@ export const PrMeta = z.object({
   // Latest-review score (list endpoint only; null/absent until reviewed).
   score: z.number().int().nullish(),
   cost_usd: z.number().nullish(),
+  // Severity breakdown across all reviews of the PR (list endpoint only;
+  // null/absent when the PR has no findings). Dismissed findings excluded.
+  findings: SeverityCounts.nullish(),
 });
 export type PrMeta = z.infer<typeof PrMeta>;
 

@@ -1,14 +1,14 @@
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
-import { and, desc, eq, inArray, sum } from 'drizzle-orm';
-import type { PrMeta, PrDetail, GitHubClient, PrReviewComment } from '@devdigest/shared';
+import { and, desc, eq, inArray, isNull, sum } from 'drizzle-orm';
+import type { PrMeta, PrDetail, GitHubClient, PrReviewComment, SeverityCounts } from '@devdigest/shared';
 import { PrCommentInput } from '@devdigest/shared';
 import type { Db } from '../../db/client.js';
 import * as t from '../../db/schema.js';
 import { getContext } from '../_shared/context.js';
 import { IdParams } from '../_shared/schemas.js';
 import { AppError, NotFoundError } from '../../platform/errors.js';
-import { deriveReviewStatus } from './status.js';
+import { deriveReviewStatus, rollupSeverities } from './status.js';
 
 /**
  * F1 — pulls module. PR import via Octokit (list + per-PR detail).
@@ -114,8 +114,7 @@ export default async function pullsRoutes(appBase: FastifyInstance) {
 
     // Latest-review SCORE per PR for the list's score ring. Computed on read
     // from reviews (no FK denorm); the list is small, so one IN-query + JS
-    // grouping is cheap. (The per-severity FINDINGS breakdown is intentionally
-    // not surfaced on the list — findings live on the PR detail page.)
+    // grouping is cheap.
     const prIds = rows.map((r) => r.id);
     const latestReviewByPr = new Map<string, { score: number | null }>();
     if (prIds.length > 0) {
@@ -131,6 +130,7 @@ export default async function pullsRoutes(appBase: FastifyInstance) {
     }
 
     const costByPrId = await costByPr(container.db, prIds);
+    const findingsByPrId = await findingsByPr(container.db, prIds);
 
     const now = Date.now();
     return rows.map((r) => {
@@ -157,6 +157,7 @@ export default async function pullsRoutes(appBase: FastifyInstance) {
         updated_at: r.updatedAt?.toISOString() ?? null,
         score: review ? review.score : null,
         cost_usd: costByPrId.get(r.id) ?? null,
+        findings: findingsByPrId.get(r.id) ?? null,
       };
     });
   });
@@ -341,5 +342,34 @@ async function costByPr(db: Db, prIds: string[]): Promise<Map<string, number>> {
     const n = r.cost == null ? null : Number(r.cost);
     if (r.prId && n != null && Number.isFinite(n)) out.set(r.prId, n);
   }
+  return out;
+}
+
+/** Severity breakdown per PR, across all `kind: 'review'` reviews, excluding
+ *  dismissed findings. One IN-query joining findings → reviews (findings has
+ *  no pr_id of its own) + JS grouping — same "list is small" rationale as
+ *  costByPr/the score query above. A PR with no (non-dismissed) findings is
+ *  absent from the map. */
+async function findingsByPr(db: Db, prIds: string[]): Promise<Map<string, SeverityCounts>> {
+  const out = new Map<string, SeverityCounts>();
+  if (prIds.length === 0) return out;
+  const rows = await db
+    .select({ prId: t.reviews.prId, severity: t.findings.severity })
+    .from(t.findings)
+    .innerJoin(t.reviews, eq(t.findings.reviewId, t.reviews.id))
+    .where(
+      and(
+        inArray(t.reviews.prId, prIds),
+        eq(t.reviews.kind, 'review'),
+        isNull(t.findings.dismissedAt),
+      ),
+    );
+  const byPr = new Map<string, { severity: string }[]>();
+  for (const r of rows) {
+    const list = byPr.get(r.prId) ?? [];
+    list.push({ severity: r.severity });
+    byPr.set(r.prId, list);
+  }
+  for (const [prId, list] of byPr) out.set(prId, rollupSeverities(list));
   return out;
 }

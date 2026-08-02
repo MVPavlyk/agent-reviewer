@@ -12,6 +12,7 @@ Entry format (one line, dated, anchored to a file, a command, or an exact error)
 ## What Works
 
 ## What Doesn't Work
+- **2026-08-02** — agent-browser has no negative-assertion primitive: only `wait --text`, `wait --url`, and `find role|text|label click` are supported (confirmed by grepping every `specs/*.flow.json`). Don't invent verbs like "assert not-text" or "--url-not"; put absence checks in a unit test instead — `e2e/specs/04-pr-findings.flow.json`
 
 ## Codebase Patterns
 

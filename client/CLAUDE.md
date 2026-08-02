@@ -28,3 +28,8 @@ reviews, author agents.
   barrel into the webpack bundle. See the workaround in
   [src/lib/feature-models.ts](./src/lib/feature-models.ts) before adding a new
   value export there.
+
+## Verification
+- Never drive the app manually through a browser tool (screenshots, clicks,
+  scrolling) to check a change. Rely on `pnpm test` and `pnpm typecheck`
+  instead. If visual confirmation is genuinely needed, ask the user to check.

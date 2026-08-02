@@ -62,9 +62,12 @@ Every package has an append-only `INSIGHTS.md` next to its `CLAUDE.md`.
 running notes: append-only, dated, never rewritten. Don't move entries between
 them on your own.
 
-## `docs/` means two different things
+## `docs/` means three different things
 - `docs/agent-prompts/` (root) — **product** content: human-readable copies of
   agents' `system_prompt`. The DB is the runtime source of truth.
+- `docs/features/` (root) — one file per shipped cross-package feature (what
+  it does, why, how the pieces fit) — written on request via the
+  `feature-docs` skill, e.g. `docs/features/run-cost-badge.md`.
 - `<package>/docs/` — developer design notes / ADRs for that package.
 
 ## Commands

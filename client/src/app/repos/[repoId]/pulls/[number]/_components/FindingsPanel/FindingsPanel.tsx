@@ -6,6 +6,7 @@ import React from "react";
 import { useTranslations } from "next-intl";
 import { Toggle, EmptyState } from "@devdigest/ui";
 import type { FindingRecord } from "@devdigest/shared";
+import type { SeverityLevel } from "@/components/severity-counts";
 import { FindingCard } from "../FindingCard";
 import { useFindingAction } from "../../../../../../../lib/hooks/reviews";
 import { KEY_TO_ACTION } from "./constants";
@@ -17,18 +18,33 @@ export function FindingsPanel({
   prId,
   repoFullName,
   headSha,
+  severityFilter = null,
+  focusFindingId = null,
 }: {
   findings: FindingRecord[];
   prId: string;
   repoFullName?: string | null;
   headSha?: string | null;
+  /** Restricts the panel to one severity (PR-detail counter-row filter). */
+  severityFilter?: SeverityLevel | null;
+  /** A finding targeted via `?findingItem` — expanded by default. */
+  focusFindingId?: string | null;
 }) {
   const t = useTranslations("prReview");
   const action = useFindingAction();
   const [hideLow, setHideLow] = React.useState(false);
   const [focusIdx, setFocusIdx] = React.useState(0);
 
-  const shown = React.useMemo(() => visibleFindings(findings, hideLow), [findings, hideLow]);
+  const shown = React.useMemo(
+    () => visibleFindings(findings, hideLow, severityFilter),
+    [findings, hideLow, severityFilter],
+  );
+
+  // The severity filter can shorten the list out from under the current
+  // keyboard focus (j/k) — reset to the top rather than pointing past the end.
+  React.useEffect(() => {
+    setFocusIdx(0);
+  }, [severityFilter]);
 
   // j/k navigation + a/d shortcuts on the focused finding (keyboard).
   React.useEffect(() => {
@@ -63,7 +79,7 @@ export function FindingsPanel({
               key={f.id}
               f={f}
               focused={i === focusIdx}
-              defaultExpanded={i === 0}
+              defaultExpanded={i === 0 || f.id === focusFindingId}
               pending={action.isPending}
               repoFullName={repoFullName}
               headSha={headSha}
