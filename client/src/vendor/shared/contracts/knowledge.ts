@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { FindingCategory } from './findings';
 
 /**
  * Conformance, Onboarding, Eval, Memory, Conventions, Skills,
@@ -128,8 +129,40 @@ export const Skill = z.object({
   enabled: z.boolean(),
   version: z.number().int(),
   evidence_files: z.array(z.string()).nullish(),
+  // List-cheap usage stats, computed alongside the base row (see
+  // docs/specs/skills.md E7 — one aggregate join for the whole list).
+  agents_count: z.number().int(),
+  pull_rate: z.number().min(0).max(1),
+  accept_rate: z.number().min(0).max(1),
 });
 export type Skill = z.infer<typeof Skill>;
+
+export const SkillVersion = z.object({
+  skill_id: z.string(),
+  version: z.number().int(),
+  body: z.string(),
+  change_summary: z.string().nullable(),
+  created_at: z.string(),
+});
+export type SkillVersion = z.infer<typeof SkillVersion>;
+
+export const SkillStatsCategoryBreakdown = z.object({
+  category: FindingCategory,
+  count: z.number().int(),
+  cost_usd: z.number(),
+});
+export type SkillStatsCategoryBreakdown = z.infer<typeof SkillStatsCategoryBreakdown>;
+
+// Attribution is APPROXIMATE and the UI must say so (docs/specs/skills.md E4).
+export const SkillStats = z.object({
+  agents_count: z.number().int(),
+  pull_rate: z.number().min(0).max(1),
+  accept_rate: z.number().min(0).max(1),
+  findings_by_category: z.array(SkillStatsCategoryBreakdown),
+  total_cost_usd: z.number(),
+  window_days: z.number().int(),
+});
+export type SkillStats = z.infer<typeof SkillStats>;
 
 export const CommunitySkill = z.object({
   name: z.string(),

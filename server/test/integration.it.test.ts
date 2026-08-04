@@ -6,7 +6,7 @@ import { buildApp } from '../src/app.js';
 import { loadConfig } from '../src/platform/config.js';
 import { seed } from '../src/db/seed.js';
 import * as t from '../src/db/schema.js';
-import { MockGitClient, MockGitHubClient } from '../src/adapters/mocks.js';
+import { MockGitClient, MockGitHubClient } from '../src/adapters/index.js';
 
 const hasDocker = await dockerAvailable();
 const d = hasDocker ? describe : describe.skip;

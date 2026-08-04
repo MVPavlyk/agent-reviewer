@@ -84,6 +84,19 @@ them on your own.
 `./scripts/dev.sh` — Postgres + migrate + seed + API + web, from zero.
 Per-package commands: see that package's CLAUDE.md.
 
+### No system Node in the agent shell
+This machine has no `node`/`npm`/`pnpm` on `PATH` outside the IDE. WebStorm
+bundles its own, under a version-numbered folder that changes with IDE
+updates — locate it instead of hardcoding the version:
+
+```bash
+NODE_BIN="$(dirname "$(find "$HOME/Library/Application Support/JetBrains"/WebStorm*/node/versions/*/bin/node 2>/dev/null | head -1)")"
+export PATH="$NODE_BIN:$PATH"
+```
+
+That bin dir also has `pnpm`, `npm`, and `npx` — no separate pnpm install
+needed. Confirmed working: `pnpm run typecheck` in `client/` via this path.
+
 ## Do not touch
 - `server/clones/**` — git-ignored checkouts of imported repos, not source.
 - `server/src/db/migrations/*` and `meta/` — drizzle-generated. Never hand-edit

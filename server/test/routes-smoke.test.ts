@@ -1,7 +1,7 @@
 import { describe, it, expect, afterAll } from 'vitest';
 import { buildApp } from '../src/app.js';
 import { loadConfig } from '../src/platform/config.js';
-import { MockGitHubClient, MockLLMProvider } from '../src/adapters/mocks.js';
+import { MockGitHubClient, MockLLMProvider } from '../src/adapters/index.js';
 
 /**
  * No-DB route smoke tests via app.inject(). `/health` and the validation/error

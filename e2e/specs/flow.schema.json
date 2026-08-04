@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DevDigest e2e flow",
+  "description": "Mirrors the Flow/Step interfaces in ../lib/assert.ts — keep in sync by hand.",
+  "type": "object",
+  "required": ["name", "steps"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "name": { "type": "string" },
+    "description": { "type": "string" },
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["cmd"],
+        "additionalProperties": false,
+        "properties": {
+          "cmd": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "agent-browser argv, e.g. [\"wait\", \"--text\", \"#482\"]. {BASE} is substituted."
+          },
+          "label": { "type": "string" },
+          "assert": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "stdoutIncludes": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

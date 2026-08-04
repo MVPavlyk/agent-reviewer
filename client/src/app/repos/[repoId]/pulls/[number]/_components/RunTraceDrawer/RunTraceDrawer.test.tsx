@@ -19,16 +19,22 @@ const TRACE: RunTrace = {
   ],
 };
 
-vi.mock("../../../../../../../lib/hooks/trace", () => ({
-  useRunTrace: () => ({ data: TRACE, isLoading: false }),
+const { useRunTraceMock } = vi.hoisted(() => ({ useRunTraceMock: vi.fn() }));
+vi.mock("@/lib/hooks/trace", () => ({
+  useRunTrace: useRunTraceMock,
 }));
-vi.mock("../../../../../../../lib/hooks/reviews", () => ({
+vi.mock("@/lib/hooks/reviews", () => ({
   useRunEvents: () => ({ events: [], running: false }),
 }));
 
 import RunTraceDrawer from "./RunTraceDrawer";
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  useRunTraceMock.mockReset();
+  useRunTraceMock.mockReturnValue({ data: TRACE, isLoading: false });
+});
+useRunTraceMock.mockReturnValue({ data: TRACE, isLoading: false });
 
 function renderWithIntl(ui: React.ReactElement) {
   return render(
@@ -53,5 +59,24 @@ describe("A5 Run Trace drawer (smoke)", () => {
     fireEvent.click(screen.getByText("log"));
     // LiveLogStream renders its filter input
     expect(screen.getByPlaceholderText("Filter log…")).toBeInTheDocument();
+  });
+
+  it("shows a Skills prompt block with a ~N tokens estimate when the trace has one", () => {
+    renderWithIntl(<RunTraceDrawer runId="r1" agentName="Security" prNumber={482} onClose={() => {}} />);
+    // "Prompt assembly" section starts collapsed — open it.
+    fireEvent.click(screen.getByText("Prompt assembly"));
+    expect(screen.getByText("Skills (dynamic)")).toBeInTheDocument();
+    // TRACE.prompt_assembly.skills = "### skill" → ceil(9/4) = 3 tokens.
+    expect(screen.getByText("~3 tokens", { exact: false })).toBeInTheDocument();
+  });
+
+  it("omits the Skills prompt block when prompt_assembly.skills is null (disabled skill)", () => {
+    useRunTraceMock.mockReturnValue({
+      data: { ...TRACE, prompt_assembly: { ...TRACE.prompt_assembly, skills: null } },
+      isLoading: false,
+    });
+    renderWithIntl(<RunTraceDrawer runId="r1" agentName="Security" prNumber={482} onClose={() => {}} />);
+    fireEvent.click(screen.getByText("Prompt assembly"));
+    expect(screen.queryByText("Skills (dynamic)")).not.toBeInTheDocument();
   });
 });

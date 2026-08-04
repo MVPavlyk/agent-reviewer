@@ -7,10 +7,12 @@ import {
   timestamp,
   doublePrecision,
   index,
+  primaryKey,
 } from 'drizzle-orm/pg-core';
 import { workspaces } from './core';
 import { agents } from './agents';
 import { pullRequests } from './pulls';
+import { skills } from './skills';
 
 // ============================================================ Observability
 
@@ -57,6 +59,30 @@ export const runTraces = pgTable('run_traces', {
     .references(() => agentRuns.id, { onDelete: 'cascade' }),
   trace: jsonb('trace').notNull(),
 });
+
+/** Which skills (and which skill VERSION) were active on a run — the
+ *  attribution join for skills Stats. Written once, right after
+ *  `run-executor` resolves `linkedSkills` for the run (see
+ *  docs/specs/skills.md decision E4/E6). `skillVersion` snapshots
+ *  `skills.version` at run time so a later body edit doesn't rewrite history. */
+export const runSkills = pgTable(
+  'run_skills',
+  {
+    runId: uuid('run_id')
+      .notNull()
+      .references(() => agentRuns.id, { onDelete: 'cascade' }),
+    skillId: uuid('skill_id')
+      .notNull()
+      .references(() => skills.id, { onDelete: 'cascade' }),
+    skillVersion: integer('skill_version').notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.runId, table.skillId] }),
+    // Backs the Stats-tab attribution query (findings → reviews → run_skills
+    // WHERE skill_id = :id), same rationale as the other FK indexes in this file.
+    index('run_skills_skill_id_idx').on(table.skillId),
+  ],
+);
 
 export const multiAgentRuns = pgTable('multi_agent_runs', {
   id: uuid('id').primaryKey().defaultRandom(),

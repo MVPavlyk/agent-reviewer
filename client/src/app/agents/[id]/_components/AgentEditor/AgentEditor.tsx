@@ -8,6 +8,7 @@ import { useTranslations } from "next-intl";
 import { Tabs } from "@devdigest/ui";
 import type { Agent } from "@devdigest/shared";
 import { ConfigTab } from "./_components/ConfigTab";
+import { SkillsTab } from "./_components/SkillsTab";
 import { TABS } from "./constants";
 import { s } from "./styles";
 
@@ -20,9 +21,9 @@ export function AgentEditor({ agent, tab, onTab }: { agent: Agent; tab: string; 
         <Tabs tabs={tabs} value={tab} onChange={onTab} pad="0 24px" />
       </div>
       <div style={s.body}>
-        {/* key={agent.id} remounts ConfigTab on agent switch so its form state
-            resets cleanly, instead of an effect syncing props into state. */}
-        <ConfigTab key={agent.id} agent={agent} />
+        {/* key={agent.id} remounts the active tab on agent switch so its local
+            state resets cleanly, instead of an effect syncing props into state. */}
+        {tab === "skills" ? <SkillsTab key={agent.id} agent={agent} /> : <ConfigTab key={agent.id} agent={agent} />}
       </div>
     </div>
   );

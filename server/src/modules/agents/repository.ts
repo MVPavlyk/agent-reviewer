@@ -1,4 +1,4 @@
-import { and, asc, desc, eq } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray } from 'drizzle-orm';
 import type { Db } from '../../db/client.js';
 import * as t from '../../db/schema.js';
 import type { CiFailOn, Provider, ReviewStrategy } from '@devdigest/shared';
@@ -11,7 +11,7 @@ import { isConfigChange } from './helpers.js';
  * agent side: link/reorder/list for an agent). Workspace-scoped throughout.
  */
 
-import type { AgentRow, AgentVersionRow } from '../../db/rows.js';
+import type { AgentRow, AgentVersionRow, SkillRow } from '../../db/rows.js';
 export type { AgentRow, AgentVersionRow };
 
 export interface InsertAgent {
@@ -44,7 +44,7 @@ export interface UpdateAgent {
 
 /** A skill linked to an agent (with its order), joined from agent_skills. */
 export interface LinkedSkillRow {
-  skill: typeof t.skills.$inferSelect;
+  skill: SkillRow;
   order: number;
 }
 
@@ -204,8 +204,20 @@ export class AgentsRepository {
     return links.map((l) => l.skill.id);
   }
 
-  /** Link a skill to an agent at a given order (idempotent: upserts order). */
-  async linkSkill(agentId: string, skillId: string, order: number): Promise<void> {
+  /**
+   * Link a skill to an agent at a given order (idempotent: upserts order).
+   * Workspace-scoped: silently no-ops if `skillId` doesn't belong to
+   * `workspaceId` — a foreign skill must never enter an agent's prompt.
+   * Returns false when the skill was rejected.
+   */
+  async linkSkill(
+    workspaceId: string,
+    agentId: string,
+    skillId: string,
+    order: number,
+  ): Promise<boolean> {
+    const validIds = await this.validSkillIds(workspaceId, [skillId]);
+    if (validIds.length === 0) return false;
     await this.db
       .insert(t.agentSkills)
       .values({ agentId, skillId, order })
@@ -213,6 +225,7 @@ export class AgentsRepository {
         target: [t.agentSkills.agentId, t.agentSkills.skillId],
         set: { order },
       });
+    return true;
   }
 
   async unlinkSkill(agentId: string, skillId: string): Promise<void> {
@@ -224,13 +237,34 @@ export class AgentsRepository {
   /**
    * Replace the full set of linked skills for an agent with `skillIds`, assigning
    * order = index. Used by the "Skills" editor tab (attach/reorder). Skills not in
-   * the list are unlinked.
+   * the list are unlinked. Workspace-scoped: any id not belonging to
+   * `workspaceId` is dropped before linking (relative order of the rest is kept).
+   *
+   * Wrapped in a transaction: this is the DELETE-then-INSERT shape that caused
+   * the repo-intel deadlock (40P01, see server/INSIGHTS.md). Risk is lower here
+   * — the PK is `(agent_id, skill_id)`, so the delete is scoped to one agent —
+   * but the client also disables the reorder/attach controls while a save is
+   * pending, so two overlapping calls for the SAME agent shouldn't happen; this
+   * transaction is the DB-side backstop.
    */
-  async setSkills(agentId: string, skillIds: string[]): Promise<void> {
-    await this.db.delete(t.agentSkills).where(eq(t.agentSkills.agentId, agentId));
-    if (skillIds.length === 0) return;
-    await this.db
-      .insert(t.agentSkills)
-      .values(skillIds.map((skillId, i) => ({ agentId, skillId, order: i })));
+  async setSkills(workspaceId: string, agentId: string, skillIds: string[]): Promise<void> {
+    const validIds = skillIds.length > 0 ? await this.validSkillIds(workspaceId, skillIds) : [];
+    await this.db.transaction(async (tx) => {
+      await tx.delete(t.agentSkills).where(eq(t.agentSkills.agentId, agentId));
+      if (validIds.length === 0) return;
+      await tx
+        .insert(t.agentSkills)
+        .values(validIds.map((skillId, i) => ({ agentId, skillId, order: i })));
+    });
+  }
+
+  /** Filters `skillIds` down to those that exist in `workspaceId`, preserving order. */
+  private async validSkillIds(workspaceId: string, skillIds: string[]): Promise<string[]> {
+    const rows = await this.db
+      .select({ id: t.skills.id })
+      .from(t.skills)
+      .where(and(eq(t.skills.workspaceId, workspaceId), inArray(t.skills.id, skillIds)));
+    const valid = new Set(rows.map((r) => r.id));
+    return skillIds.filter((id) => valid.has(id));
   }
 }

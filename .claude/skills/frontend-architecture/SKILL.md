@@ -1,6 +1,6 @@
 ---
 name: frontend-architecture
-description: "Where React/Next.js code should live: folder structure, feature vs shared layers, component decomposition, constants, utils vs domain modules, business logic tiers, types placement, state ownership, and barrel-file (index.ts) conventions. Use whenever creating new files, scaffolding a feature, deciding which folder or file something belongs in, reviewing/refactoring a project's structure, or placing the 'use client' boundary in the file tree. Does not cover component/hook correctness or render-time bugs (see react-best-practices), route-file conventions or RSC data-fetching semantics (see next-best-practices), or type-level programming (see typescript-expert)."
+description: "Where React/Next.js code should live: folder structure, feature vs shared layers, component decomposition, constants, utils vs domain modules, business logic tiers, types placement, state ownership, and barrel-file (index.ts) conventions. Use whenever creating new files, scaffolding a feature, deciding which folder or file something belongs in, reviewing/refactoring a project's structure, or placing the 'use client' boundary in the file tree. Does not cover component/hook correctness or render-time bugs (see react-best-practices), route-file conventions or RSC data-fetching semantics (see next-best-practices), type-level programming (see typescript-expert), or import specifier hygiene like alias-vs-relative-path or barrel routing (see import-hygiene)."
 ---
 
 # Frontend Architecture — Where Code Goes

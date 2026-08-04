@@ -8,7 +8,7 @@ import { Badge } from "@devdigest/ui";
 import type { RunTrace, FindingRecord } from "@devdigest/shared";
 import { formatCost } from "@/components/run-cost-badge";
 import { PROMPT_COLORS } from "../../constants";
-import { formatSeconds, formatTokens } from "../../helpers";
+import { formatSeconds, formatTokens, approxTokens } from "../../helpers";
 import { s } from "../../styles";
 import { TraceSection } from "../TraceSection";
 import { ToolCallRow } from "../ToolCallRow";
@@ -72,23 +72,58 @@ export function TraceBody({ trace, findings }: { trace: RunTrace; findings: Find
       <FindingsSection findings={findings} />
 
       <TraceSection icon="FileText" title={t("trace.promptAssembly")} defaultOpen={false}>
-        <PromptBlock label={t("trace.prompt.system")} text={trace.prompt_assembly.system} color={PROMPT_COLORS.system} />
+        <PromptBlock
+          label={t("trace.prompt.system")}
+          text={trace.prompt_assembly.system}
+          color={PROMPT_COLORS.system}
+          tokens={approxTokens(trace.prompt_assembly.system)}
+        />
         {trace.prompt_assembly.skills != null && (
-          <PromptBlock label={t("trace.prompt.skills")} text={trace.prompt_assembly.skills} color={PROMPT_COLORS.skills} />
+          <PromptBlock
+            label={t("trace.prompt.skills")}
+            text={trace.prompt_assembly.skills}
+            color={PROMPT_COLORS.skills}
+            tokens={approxTokens(trace.prompt_assembly.skills)}
+          />
         )}
         {trace.prompt_assembly.memory != null && (
-          <PromptBlock label={t("trace.prompt.memory")} text={trace.prompt_assembly.memory} color={PROMPT_COLORS.memory} />
+          <PromptBlock
+            label={t("trace.prompt.memory")}
+            text={trace.prompt_assembly.memory}
+            color={PROMPT_COLORS.memory}
+            tokens={approxTokens(trace.prompt_assembly.memory)}
+          />
         )}
         {trace.prompt_assembly.repo_map != null && (
-          <PromptBlock label={t("trace.prompt.repoMap")} text={trace.prompt_assembly.repo_map} color={PROMPT_COLORS.repoMap} />
+          <PromptBlock
+            label={t("trace.prompt.repoMap")}
+            text={trace.prompt_assembly.repo_map}
+            color={PROMPT_COLORS.repoMap}
+            tokens={approxTokens(trace.prompt_assembly.repo_map)}
+          />
         )}
         {trace.prompt_assembly.specs != null && (
-          <PromptBlock label={t("trace.prompt.specs")} text={trace.prompt_assembly.specs} color={PROMPT_COLORS.specs} />
+          <PromptBlock
+            label={t("trace.prompt.specs")}
+            text={trace.prompt_assembly.specs}
+            color={PROMPT_COLORS.specs}
+            tokens={approxTokens(trace.prompt_assembly.specs)}
+          />
         )}
         {trace.prompt_assembly.callers != null && (
-          <PromptBlock label={t("trace.prompt.callers")} text={trace.prompt_assembly.callers} color={PROMPT_COLORS.callers} />
+          <PromptBlock
+            label={t("trace.prompt.callers")}
+            text={trace.prompt_assembly.callers}
+            color={PROMPT_COLORS.callers}
+            tokens={approxTokens(trace.prompt_assembly.callers)}
+          />
         )}
-        <PromptBlock label={t("trace.prompt.user")} text={trace.prompt_assembly.user} color={PROMPT_COLORS.user} />
+        <PromptBlock
+          label={t("trace.prompt.user")}
+          text={trace.prompt_assembly.user}
+          color={PROMPT_COLORS.user}
+          tokens={approxTokens(trace.prompt_assembly.user)}
+        />
       </TraceSection>
 
       <TraceSection

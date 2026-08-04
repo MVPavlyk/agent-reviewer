@@ -1,10 +1,38 @@
 {
+  "$schema": "./flow.schema.json",
   "name": "Agents list renders the seeded reviewer agents",
   "description": "Loads /agents and confirms a seeded agent (Security Reviewer) is rendered by AgentCard. Exercises the agents list route and its API fetch.",
   "steps": [
-    { "cmd": ["open", "{BASE}/agents"], "label": "load the agents page" },
-    { "cmd": ["wait", "--url", "/agents"], "label": "agents route reached" },
-    { "cmd": ["wait", "--load", "networkidle"], "label": "agents fetch settles" },
-    { "cmd": ["wait", "--text", "Security Reviewer"], "label": "seeded agent card is visible" }
+    {
+      "cmd": [
+        "open",
+        "{BASE}/agents"
+      ],
+      "label": "load the agents page"
+    },
+    {
+      "cmd": [
+        "wait",
+        "--url",
+        "/agents"
+      ],
+      "label": "agents route reached"
+    },
+    {
+      "cmd": [
+        "wait",
+        "--load",
+        "networkidle"
+      ],
+      "label": "agents fetch settles"
+    },
+    {
+      "cmd": [
+        "wait",
+        "--text",
+        "Security Reviewer"
+      ],
+      "label": "seeded agent card is visible"
+    }
   ]
 }
