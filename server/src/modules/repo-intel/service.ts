@@ -25,7 +25,7 @@ import {
   parseInvocationHeads,
   parseSymbols,
   langForFile,
-} from '../../adapters/astgrep/index.js';
+} from '../../adapters/astgrep';
 import { readFile } from 'node:fs/promises';
 import { extname, join } from 'node:path';
 import { RepoIntelRepository, type FullSymbolRow } from './repository.js';
@@ -629,6 +629,24 @@ export class RepoIntelService implements RepoIntel {
   /** Top-N files by rank, minus tests/configs/migrations — conventions sample. */
   async getConventionSamples(repoId: string, n: number): Promise<string[]> {
     return this.getTopFilesByRank(repoId, n);
+  }
+
+  /** Read file contents from the repo's clone. Best-effort: missing repo,
+   *  missing clone, or an unreadable path all degrade to a smaller/empty
+   *  result rather than throwing. */
+  async getFileContents(
+    repoId: string,
+    paths: string[],
+  ): Promise<{ path: string; content: string }[]> {
+    if (paths.length === 0) return [];
+    const repo = await this.repo.getRepoBasics(repoId);
+    if (!repo || !repo.clonePath) return [];
+    const out: { path: string; content: string }[] = [];
+    for (const path of paths) {
+      const content = await readClone(repo.clonePath, path);
+      if (content !== null) out.push({ path, content });
+    }
+    return out;
   }
 
   /**

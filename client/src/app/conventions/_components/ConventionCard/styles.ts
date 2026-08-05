@@ -1,0 +1,58 @@
+import type { CSSProperties } from "react";
+
+export const s = {
+  card: {
+    borderRadius: 8,
+    border: "1px solid var(--border)",
+    background: "var(--bg-elevated)",
+    padding: 16,
+    display: "flex",
+    flexDirection: "column",
+    gap: 12,
+  } satisfies CSSProperties,
+  header: { display: "flex", alignItems: "flex-start", gap: 10 } satisfies CSSProperties,
+  titleWrap: {
+    flex: 1,
+    minWidth: 0,
+    paddingTop: 2,
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    flexWrap: "wrap",
+  } satisfies CSSProperties,
+  title: { fontSize: 15, fontWeight: 700, fontStyle: "italic" } satisfies CSSProperties,
+  actions: { display: "flex", gap: 8, flexShrink: 0 } satisfies CSSProperties,
+  snippetBlock: {
+    borderRadius: 7,
+    border: "1px solid var(--border)",
+    background: "var(--bg-surface)",
+    overflow: "hidden",
+  } satisfies CSSProperties,
+  snippetHeader: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: "6px 10px",
+    borderBottom: "1px solid var(--border)",
+    background: "var(--bg-elevated)",
+  } satisfies CSSProperties,
+  snippetPath: { fontSize: 12.5, color: "var(--text-secondary)" } satisfies CSSProperties,
+  snippetPre: {
+    margin: 0,
+    padding: 12,
+    fontSize: 12.5,
+    lineHeight: 1.6,
+    color: "var(--text-secondary)",
+    overflowX: "auto",
+    whiteSpace: "pre",
+  } satisfies CSSProperties,
+  confidenceRow: { display: "flex", alignItems: "center", gap: 10 } satisfies CSSProperties,
+  confidenceLabel: {
+    fontSize: 12,
+    fontWeight: 600,
+    color: "var(--text-muted)",
+    flexShrink: 0,
+    width: 76,
+  } satisfies CSSProperties,
+  confidenceBarWrap: { flex: 1 } satisfies CSSProperties,
+} as const;

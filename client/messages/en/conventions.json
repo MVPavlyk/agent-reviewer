@@ -15,12 +15,33 @@
       "body": "Scan the repo to surface house-rules — naming, error handling, structure — each backed by evidence you can turn into a Skill.",
       "cta": "Run extraction"
     },
-    "candidateCount": "{count, plural, one {# candidate} other {# candidates}} · grounded against sampled files"
+    "candidateCount": "{count, plural, one {# candidate} other {# candidates}} · grounded against sampled files",
+    "detectedFrom": "Detected from {count, plural, one {# sample file} other {# sample files}} · last scan {time}",
+    "neverScanned": "Never scanned yet",
+    "acceptedOf": "{accepted} of {total} accepted",
+    "deselectAll": "Deselect all",
+    "createSkill": "Create skill"
   },
   "card": {
     "confidence": "Confidence",
-    "accepted": "Accepted",
+    "accept": "Accept",
     "accepting": "Accepting…",
-    "acceptAsSkill": "Accept as Skill"
+    "acceptAsSkill": "Accept as Skill",
+    "reject": "Reject",
+    "rejecting": "Rejecting…",
+    "copy": "Copy snippet",
+    "copied": "Copied"
+  },
+  "modal": {
+    "title": "Create skill from conventions",
+    "mergedBanner": "Merged from {count, plural, one {# accepted convention} other {# accepted conventions}} in {repo}. Everything below is editable before you save.",
+    "bodyLabel": "Skill body",
+    "tokens": "~{count} tokens",
+    "cancel": "Cancel",
+    "create": "Create skill",
+    "creating": "Creating…",
+    "savedFooter": "Saved as v{version} · added to Skills Lab",
+    "loadError": "Could not build a draft from the selected conventions.",
+    "loadingDraft": "Merging conventions…"
   }
 }

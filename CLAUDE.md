@@ -4,6 +4,12 @@ Local-first AI PR review. Four standalone packages — **no monorepo tooling**
 (no turbo/nx/pnpm workspace). Cross-package types resolve through tsconfig
 `paths`, not published packages.
 
+## Language
+Plan mode output (the plan text shown via `ExitPlanMode`) is written in
+Ukrainian by default. Everything else (code, comments, commit messages,
+chat replies) follows the language the user is writing in, unless asked
+otherwise.
+
 ## Map
 | Path | Package | Owns |
 |---|---|---|
