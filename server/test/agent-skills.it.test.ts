@@ -85,8 +85,8 @@ d('agent-skills linking', () => {
     });
     expect(linked.statusCode).toBe(200);
     expect(linked.json()).toEqual([
-      { agent_id: agentId, skill_id: s1, order: 0 },
-      { agent_id: agentId, skill_id: s2, order: 1 },
+      { agent_id: agentId, skill_id: s1, position: 0 },
+      { agent_id: agentId, skill_id: s2, position: 1 },
     ]);
 
     const reordered = await app.inject({
@@ -95,8 +95,8 @@ d('agent-skills linking', () => {
       payload: { skill_ids: [s2, s1] },
     });
     expect(reordered.json()).toEqual([
-      { agent_id: agentId, skill_id: s2, order: 0 },
-      { agent_id: agentId, skill_id: s1, order: 1 },
+      { agent_id: agentId, skill_id: s2, position: 0 },
+      { agent_id: agentId, skill_id: s1, position: 1 },
     ]);
 
     // Repeated identical call is stable (idempotent).
@@ -137,7 +137,7 @@ d('agent-skills linking', () => {
       payload: { skill_ids: [ownSkill, foreignSkill!.id] },
     });
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toEqual([{ agent_id: agentId, skill_id: ownSkill, order: 0 }]);
+    expect(res.json()).toEqual([{ agent_id: agentId, skill_id: ownSkill, position: 0 }]);
     await app.close();
   });
 

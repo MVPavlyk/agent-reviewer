@@ -217,7 +217,7 @@ d('review-skills — prompt_assembly.skills', () => {
 
     // The link is untouched — only the skill's own `enabled` flag changed.
     const links = (await app.inject({ method: 'GET', url: `/agents/${agentId}/skills` })).json();
-    expect(links).toEqual([{ agent_id: agentId, skill_id: skillId, order: 0 }]);
+    expect(links).toEqual([{ agent_id: agentId, skill_id: skillId, position: 0 }]);
 
     const after = await runReview(app, pr.id, agentId);
     expect(after.prompt_assembly.skills).toBeNull();
