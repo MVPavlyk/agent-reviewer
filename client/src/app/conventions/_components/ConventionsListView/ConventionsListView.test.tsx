@@ -71,6 +71,10 @@ vi.mock("@/lib/hooks/conventions", () => ({
   useUpdateConvention: () => ({ mutate: vi.fn(), isPending: false, variables: undefined }),
 }));
 
+vi.mock("@/lib/hooks/repo-intel", () => ({
+  useRepoIntelStatus: () => ({ data: { lastIndexedSha: "deadbeef" } }),
+}));
+
 vi.mock("@/components/app-shell", () => ({
   AppShell: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));

@@ -96,4 +96,26 @@ describe("ConventionCard (smoke)", () => {
     );
     expect(screen.queryByText("const user = await db.users.find(id);")).not.toBeInTheDocument();
   });
+
+  it("evidence is a plain, non-navigating control when repoFullName/headSha are missing", () => {
+    renderWithIntl(<ConventionCard convention={CONVENTION} repoId="r1" />);
+    const evidence = screen.getByText("src/api/users.ts:23-31");
+    expect(evidence.tagName).toBe("BUTTON");
+  });
+
+  it("evidence links to the real file on GitHub, pinned to the last-indexed sha, when repoFullName/headSha are given", () => {
+    renderWithIntl(
+      <ConventionCard
+        convention={CONVENTION}
+        repoId="r1"
+        repoFullName="acme/payments-api"
+        headSha="deadbeef"
+      />,
+    );
+    const link = screen.getByRole("link", { name: "src/api/users.ts:23-31" });
+    expect(link).toHaveAttribute(
+      "href",
+      "https://github.com/acme/payments-api/blob/deadbeef/src/api/users.ts#L23-L31",
+    );
+  });
 });

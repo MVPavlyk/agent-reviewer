@@ -36,7 +36,6 @@ export const s = {
     borderBottom: "1px solid var(--border)",
     background: "var(--bg-elevated)",
   } satisfies CSSProperties,
-  snippetPath: { fontSize: 12.5, color: "var(--text-secondary)" } satisfies CSSProperties,
   snippetPre: {
     margin: 0,
     padding: 12,

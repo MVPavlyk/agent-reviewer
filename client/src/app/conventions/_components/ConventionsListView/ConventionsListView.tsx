@@ -12,6 +12,7 @@ import { AppShell } from "@/components/app-shell";
 import { RepoNotFound } from "@/components/repo-not-found";
 import { useActiveRepo, useRepoNotFound } from "@/lib/repo-context";
 import { useConventions, useRescanConventions, useResetAcceptedConventions } from "@/lib/hooks/conventions";
+import { useRepoIntelStatus } from "@/lib/hooks/repo-intel";
 import { ConventionCard } from "../ConventionCard";
 import { CreateSkillFromConventionsModal } from "../CreateSkillFromConventionsModal";
 import { relativeTime } from "./helpers";
@@ -22,6 +23,11 @@ export function ConventionsListView() {
   const { repoId, activeRepo, reposLoaded } = useActiveRepo();
   const repoIdInvalid = useRepoNotFound(repoId);
   const { data, isLoading, isError, refetch } = useConventions(repoId);
+  // Evidence links deep-link to GitHub at the repo's last-indexed commit —
+  // that's the sha detection actually read the sample files from. If the repo
+  // is reindexed after a scan, older candidates' line numbers can drift from
+  // that sha; there's no per-scan sha stored to pin against instead.
+  const { data: indexState } = useRepoIntelStatus(repoId);
   const rescan = useRescanConventions();
   const resetAccepted = useResetAcceptedConventions();
   const [modalOpen, setModalOpen] = React.useState(false);
@@ -126,7 +132,13 @@ export function ConventionsListView() {
           )}
           {repoId &&
             conventions.map((c) => (
-              <ConventionCard key={c.id} convention={c} repoId={repoId} />
+              <ConventionCard
+                key={c.id}
+                convention={c}
+                repoId={repoId}
+                repoFullName={activeRepo?.full_name}
+                headSha={indexState?.lastIndexedSha}
+              />
             ))}
         </div>
       </div>

@@ -10,18 +10,26 @@
 
 import React from "react";
 import { useTranslations } from "next-intl";
-import { Button, ConfidenceNum, IconBtn, ProgressBar } from "@devdigest/ui";
+import { Button, ConfidenceNum, IconBtn, MonoLink, ProgressBar } from "@devdigest/ui";
 import type { ConventionCandidate } from "@devdigest/shared";
 import { useUpdateConvention } from "@/lib/hooks/conventions";
+import { githubBlobUrl } from "@/lib/github-urls";
 import { confidenceColor, lineLabel } from "./helpers";
 import { s } from "./styles";
 
 export function ConventionCard({
   convention,
   repoId,
+  repoFullName,
+  headSha,
 }: {
   convention: ConventionCandidate;
   repoId: string;
+  /** owner/repo + the commit the last scan indexed — enough to deep-link the
+   *  evidence to the real file on GitHub. Either missing → plain text (no
+   *  crash, no dead link guessed from a stale sha). */
+  repoFullName?: string | null;
+  headSha?: string | null;
 }) {
   const t = useTranslations("conventions");
   const update = useUpdateConvention();
@@ -33,6 +41,16 @@ export function ConventionCard({
   const location = convention.evidence_path
     ? `${convention.evidence_path}${convention.start_line != null ? `:${lineLabel(convention)}` : ""}`
     : null;
+  const fileHref =
+    repoFullName && headSha && convention.evidence_path
+      ? githubBlobUrl(
+          repoFullName,
+          headSha,
+          convention.evidence_path,
+          convention.start_line ?? undefined,
+          convention.end_line ?? undefined,
+        )
+      : undefined;
 
   const copySnippet = () => {
     void navigator.clipboard?.writeText(convention.evidence_snippet ?? "");
@@ -75,9 +93,7 @@ export function ConventionCard({
       {location && (
         <div style={s.snippetBlock}>
           <div style={s.snippetHeader}>
-            <span className="mono" style={s.snippetPath}>
-              {location}
-            </span>
+            <MonoLink href={fileHref}>{location}</MonoLink>
             <IconBtn
               icon={copied ? "Check" : "Copy"}
               label={copied ? t("card.copied") : t("card.copy")}
