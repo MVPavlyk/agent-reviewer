@@ -21,7 +21,6 @@ export function toSkillDto(row: SkillRowWithStats): Skill {
     evidence_files: row.evidenceFiles ?? null,
     agents_count: row.agentsCount,
     pull_rate: row.pullRate,
-    accept_rate: row.acceptRate,
   };
 }
 

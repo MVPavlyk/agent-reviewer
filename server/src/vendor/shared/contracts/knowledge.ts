@@ -133,7 +133,8 @@ export const Skill = z.object({
   // join for the whole `GET /skills` list — see docs/specs/skills.md E7).
   agents_count: z.number().int(),
   pull_rate: z.number().min(0).max(1),
-  accept_rate: z.number().min(0).max(1),
+  // @deprecated accept_rate removed from the list DTO — redundant with
+  // pull_rate; still available from GET /skills/:id/stats.
 });
 export type Skill = z.infer<typeof Skill>;
 
