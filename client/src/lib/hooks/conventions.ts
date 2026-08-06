@@ -92,6 +92,11 @@ export function useCreateSkillFromConventions() {
   return useMutation({
     mutationFn: (input: CreateSkillFromConventionsInput) =>
       api.post<Skill>("/conventions/create-skill", input),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["skills"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["skills"] });
+      // The merged conventions are gone server-side — drop them from every
+      // repo's cached list (no repoId on the input to scope this further).
+      qc.invalidateQueries({ queryKey: ["conventions"] });
+    },
   });
 }

@@ -221,7 +221,10 @@ export class ConventionsService {
 
   /** Create the real skill row from the (possibly user-edited) draft. Reuses
    *  `container.skillsRepo` directly rather than duplicating skill-insert
-   *  logic — the same pattern `ReviewRunExecutor` uses for `run_skills`. */
+   *  logic — the same pattern `ReviewRunExecutor` uses for `run_skills`.
+   *  The merged conventions are then removed from the review queue — their
+   *  content now lives in the skill, so leaving them listed would let the
+   *  same accepted candidate be merged into a second skill by mistake. */
   async createSkillFromConventions(
     workspaceId: string,
     input: CreateSkillFromConventionsInput,
@@ -240,6 +243,7 @@ export class ConventionsService {
       body: sanitize(input.body),
       evidenceFiles,
     });
+    await this.repo.deleteByIds(workspaceId, input.convention_ids);
     const withStats = await this.container.skillsRepo.getById(workspaceId, row.id);
     return toSkillDto(withStats!);
   }

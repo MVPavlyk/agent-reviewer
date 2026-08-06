@@ -165,4 +165,14 @@ export class ConventionsRepository {
       .from(t.conventions)
       .where(and(eq(t.conventions.workspaceId, workspaceId), inArray(t.conventions.id, ids)));
   }
+
+  /** Remove conventions once they've been merged into a skill — their content
+   *  now lives in the skill's body/evidence_files, so they no longer belong in
+   *  the review queue. */
+  async deleteByIds(workspaceId: string, ids: string[]): Promise<void> {
+    if (ids.length === 0) return;
+    await this.db
+      .delete(t.conventions)
+      .where(and(eq(t.conventions.workspaceId, workspaceId), inArray(t.conventions.id, ids)));
+  }
 }

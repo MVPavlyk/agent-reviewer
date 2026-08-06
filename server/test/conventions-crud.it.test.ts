@@ -182,6 +182,11 @@ d('conventions CRUD + rescan', () => {
       expect(created.statusCode).toBe(201);
       expect(created.json()).toMatchObject({ source: 'extracted', type: 'convention' });
 
+      // The merged convention's content now lives in the skill — it must not
+      // linger in the review queue (it would otherwise be mergeable again).
+      const afterCreate = await app.inject({ method: 'GET', url: `/repos/${repo.id}/conventions` });
+      expect(afterCreate.json().conventions).toHaveLength(0);
+
       await app.close();
     },
   );
