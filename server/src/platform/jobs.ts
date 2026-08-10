@@ -97,6 +97,11 @@ export class JobRunner {
       }
     }) as Promise<void>;
 
+    // Nobody awaits `done` today, so an unhandled rejection here used to crash
+    // the process. .catch() returns a new promise, so `done` itself still
+    // rejects for a caller that does await it.
+    done.catch(() => undefined);
+
     return { id: jobId, done };
   }
 

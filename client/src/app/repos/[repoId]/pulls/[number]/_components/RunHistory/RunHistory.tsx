@@ -2,8 +2,11 @@
 
 import React from "react";
 import { useTranslations } from "next-intl";
-import { Badge, Icon, CircularScore, type IconName } from "@devdigest/ui";
-import type { RunSummary, PrCommit } from "@devdigest/shared";
+import { Badge, Icon, CircularScore, Popover, type IconName } from "@devdigest/ui";
+import type { RunSummary, PrCommit, FindingRecord } from "@devdigest/shared";
+import { RunCostBadge } from "@/components/run-cost-badge";
+import { SeverityCounts, countBySeverity, type SeverityLevel } from "@/components/severity-counts";
+import { FindingsPreviewList, visibleSortedFindings } from "@/components/findings-preview";
 
 /**
  * PR timeline — every agent run interleaved with the PR's commits, newest-first
@@ -87,12 +90,28 @@ function tsOf(s: string | null | undefined): number {
 export function RunHistory({
   runs,
   commits = [],
+  findingsByRunId,
+  repoId,
+  prNumber,
+  onSelectSeverity,
   onOpenTrace,
   onGoToReview,
   onDelete,
 }: {
   runs: RunSummary[];
   commits?: PrCommit[];
+  /** This run's findings, keyed by run_id — sourced from the matching
+   *  ReviewRecord.findings (agent_runs itself only carries the aggregate
+   *  findings_count/blockers). Missing entry ⇒ fall back to the plain-text
+   *  "N findings · M blockers" line (e.g. a failed run with no review).
+   *  Drives both the severity-icon counts and their hover preview popover. */
+  findingsByRunId?: Map<string, FindingRecord[]>;
+  /** Needed to build the popover's "open this finding" navigation URL. */
+  repoId?: string;
+  prNumber?: number;
+  /** Clicking a severity pill (not the popover — the badge itself) sets the
+   *  PR-detail counter row's filter to that level, same as clicking it there. */
+  onSelectSeverity?: (level: SeverityLevel) => void;
   /** Open the trace + log drawer for a run (the logs icon). */
   onOpenTrace: (runId: string) => void;
   /** Jump to this run's inline review accordion below (clicking the agent name). */
@@ -188,15 +207,41 @@ export function RunHistory({
                   {r.error}
                 </div>
               )}
-              {settled && (
-                <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
-                  {t("runStatus.findings", { count: r.findings_count ?? 0 })}
-                  {(r.blockers ?? 0) > 0 ? t("runStatus.blockers", { count: r.blockers ?? 0 }) : ""}
-                </div>
-              )}
+              {settled && (() => {
+                const runFindings = findingsByRunId?.get(r.run_id);
+                if (!runFindings) {
+                  return (
+                    <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                      {t("runStatus.findings", { count: r.findings_count ?? 0 })}
+                      {(r.blockers ?? 0) > 0 ? t("runStatus.blockers", { count: r.blockers ?? 0 }) : ""}
+                    </div>
+                  );
+                }
+                const shown = visibleSortedFindings(runFindings);
+                const counts = (
+                  <SeverityCounts
+                    counts={countBySeverity(shown)}
+                    onSelect={onSelectSeverity && ((lvl) => lvl && onSelectSeverity(lvl))}
+                  />
+                );
+                if (shown.length === 0 || repoId == null || prNumber == null) return counts;
+                return (
+                  <Popover trigger={counts}>
+                    <FindingsPreviewList findings={shown} repoId={repoId} prNumber={prNumber} />
+                  </Popover>
+                );
+              })()}
             </div>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2, fontSize: 11, color: "var(--text-muted)", flexShrink: 0 }}>
               {r.ran_at && <span>{new Date(r.ran_at).toLocaleTimeString()}</span>}
+              {settled && (
+                <RunCostBadge
+                  costUsd={r.cost_usd}
+                  variant="detailed"
+                  tokensIn={r.tokens_in}
+                  tokensOut={r.tokens_out}
+                />
+              )}
             </div>
             <button
               type="button"

@@ -4,8 +4,11 @@
 import React from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Icon, Avatar, Badge, CircularScore } from "@devdigest/ui";
+import { Icon, Avatar, Badge, CircularScore, Popover } from "@devdigest/ui";
 import type { PrMeta } from "@/lib/types";
+import { RunCostBadge } from "@/components/run-cost-badge";
+import { SeverityCounts } from "@/components/severity-counts";
+import { PrFindingsPreview } from "@/components/findings-preview";
 import { SIZE_COLOR, STATUS_META } from "../../constants";
 import { relativeTime, sizeOf } from "../../helpers";
 import { s } from "../../styles";
@@ -53,10 +56,31 @@ export function PRRow({ pr, repoId }: { pr: PrMeta; repoId: string }) {
           <span style={s.muted}>—</span>
         )}
       </div>
+      <div style={s.findingsCell}>
+        {pr.findings && pr.findings.critical + pr.findings.warning + pr.findings.suggestion > 0 ? (
+          <Popover
+            trigger={
+              <SeverityCounts
+                counts={pr.findings}
+                onSelect={(level) =>
+                  router.push(`/repos/${repoId}/pulls/${pr.number}?tab=findings&sev=${level}`)
+                }
+              />
+            }
+          >
+            <PrFindingsPreview prId={pr.id} repoId={repoId} prNumber={pr.number} />
+          </Popover>
+        ) : (
+          <SeverityCounts counts={pr.findings} />
+        )}
+      </div>
       <div>
         <Badge dot color={st.c} bg="transparent">
           {t(`list.status.${st.labelKey}`)}
         </Badge>
+      </div>
+      <div style={s.costCell}>
+        <RunCostBadge costUsd={pr.cost_usd} />
       </div>
       <div style={s.updatedCell}>{relativeTime(pr.updated_at)}</div>
     </div>

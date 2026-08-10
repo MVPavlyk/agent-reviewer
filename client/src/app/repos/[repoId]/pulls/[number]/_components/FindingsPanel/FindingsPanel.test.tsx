@@ -31,6 +31,24 @@ const FINDINGS: FindingRecord[] = [
     accepted_at: null,
     dismissed_at: null,
   },
+  {
+    id: "f2",
+    severity: "WARNING",
+    category: "bug",
+    title: "Retry-After header omitted",
+    file: "src/middleware/ratelimit.ts",
+    start_line: 52,
+    end_line: 52,
+    rationale: "The 429 branch sets only the status code.",
+    suggestion: null,
+    confidence: 0.81,
+    kind: "finding",
+    trifecta_components: null,
+    evidence: null,
+    review_id: "r1",
+    accepted_at: null,
+    dismissed_at: null,
+  },
 ];
 
 function renderWithIntl(ui: React.ReactElement) {
@@ -51,5 +69,19 @@ describe("FindingsPanel (smoke)", () => {
   it("shows the empty state when nothing matches", () => {
     renderWithIntl(<FindingsPanel findings={[]} prId="pr1" />);
     expect(screen.getByText("No findings match")).toBeInTheDocument();
+  });
+});
+
+describe("FindingsPanel — severity filter", () => {
+  it("restricts the list to the selected severity", () => {
+    renderWithIntl(<FindingsPanel findings={FINDINGS} prId="pr1" severityFilter="WARNING" />);
+    expect(screen.getByText("Retry-After header omitted")).toBeInTheDocument();
+    expect(screen.queryByText("Hardcoded secret")).not.toBeInTheDocument();
+  });
+
+  it("shows everything again once the filter is cleared", () => {
+    renderWithIntl(<FindingsPanel findings={FINDINGS} prId="pr1" severityFilter={null} />);
+    expect(screen.getByText("Hardcoded secret")).toBeInTheDocument();
+    expect(screen.getByText("Retry-After header omitted")).toBeInTheDocument();
   });
 });
