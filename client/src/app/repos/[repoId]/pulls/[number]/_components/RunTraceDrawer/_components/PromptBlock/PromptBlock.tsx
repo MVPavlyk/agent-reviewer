@@ -20,7 +20,20 @@ const miniBtnStyle: React.CSSProperties = {
   cursor: "pointer",
 };
 
-export function PromptBlock({ label, text, color }: { label: string; text: string; color: string }) {
+export function PromptBlock({
+  label,
+  text,
+  color,
+  tokens,
+}: {
+  label: string;
+  text: string;
+  color: string;
+  /** Rough token estimate (`~ceil(len/4)`) shown as a subtitle. Client-side only —
+   *  "tokens in this block", not "tokens added by this block"; the real delta is
+   *  the two-run `stats.tokens_in` comparison. */
+  tokens?: number;
+}) {
   const t = useTranslations("runs");
   const [open, setOpen] = React.useState(false);
   const [full, setFull] = React.useState(false);
@@ -34,7 +47,12 @@ export function PromptBlock({ label, text, color }: { label: string; text: strin
     <div style={s.promptRow}>
       <div onClick={() => setOpen((o) => !o)} style={s.promptHead}>
         <span style={s.promptDot(color)} />
-        <span style={s.promptLabel}>{label}</span>
+        <span style={s.promptLabel}>
+          {label}
+          {tokens != null && (
+            <span style={s.promptTokens}> · {t("trace.prompt.tokensApprox", { count: tokens })}</span>
+          )}
+        </span>
         <span style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
           <button
             type="button"

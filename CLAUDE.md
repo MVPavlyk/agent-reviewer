@@ -45,7 +45,17 @@ what the UI needs. `reviewer-core` keeps no copy — its tsconfig points at serv
 
 ## Framework conventions
 Live in `.claude/skills/` (drizzle, fastify, zod, react, postgresql, typescript,
-next, security). Never restate them in a CLAUDE.md.
+next, security, frontend-architecture, onion-architecture). Never restate them in a CLAUDE.md.
+
+### Creating or editing a skill
+Write the domain content by hand (research, decisions) — the `skill-creator`
+skill doesn't substitute for that. Once a skill has a draft, run
+`skill-creator` (`anthropic-skills:skill-creator`) as a **QA gate before
+calling it done**: it validates `SKILL.md` structure/frontmatter and checks
+the `description` for triggering accuracy against sibling skills already in
+`.claude/skills/` (overlap/ambiguity, missing keywords). Do this for new
+skills and for edits that change scope or add a section, not just at
+creation time.
 
 ## Session protocol — INSIGHTS.md
 Every package has an append-only `INSIGHTS.md` next to its `CLAUDE.md`.
@@ -73,6 +83,19 @@ them on your own.
 ## Commands
 `./scripts/dev.sh` — Postgres + migrate + seed + API + web, from zero.
 Per-package commands: see that package's CLAUDE.md.
+
+### No system Node in the agent shell
+This machine has no `node`/`npm`/`pnpm` on `PATH` outside the IDE. WebStorm
+bundles its own, under a version-numbered folder that changes with IDE
+updates — locate it instead of hardcoding the version:
+
+```bash
+NODE_BIN="$(dirname "$(find "$HOME/Library/Application Support/JetBrains"/WebStorm*/node/versions/*/bin/node 2>/dev/null | head -1)")"
+export PATH="$NODE_BIN:$PATH"
+```
+
+That bin dir also has `pnpm`, `npm`, and `npx` — no separate pnpm install
+needed. Confirmed working: `pnpm run typecheck` in `client/` via this path.
 
 ## Do not touch
 - `server/clones/**` — git-ignored checkouts of imported repos, not source.

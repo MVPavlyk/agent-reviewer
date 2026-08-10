@@ -11,24 +11,29 @@ import type { AppConfig } from './config.js';
 import type { Db } from '../db/client.js';
 import { JobRunner } from './jobs.js';
 import { runBus, type RunBus } from './sse.js';
-import { LocalSecretsProvider } from '../adapters/secrets/local.js';
-import { LocalNoAuthProvider } from '../adapters/auth/local.js';
-import { OctokitGitHubClient } from '../adapters/github/octokit.js';
-import { SimpleGitClient } from '../adapters/git/simple-git.js';
-import { RipgrepCodeIndex } from '../adapters/codeindex/ripgrep.js';
-import { OpenAIProvider } from '../adapters/llm/openai.js';
-import { AnthropicProvider } from '../adapters/llm/anthropic.js';
-import { OpenAIEmbedder } from '../adapters/embedder/openai.js';
+import {
+  LocalSecretsProvider,
+  LocalNoAuthProvider,
+  OctokitGitHubClient,
+  SimpleGitClient,
+  RipgrepCodeIndex,
+  OpenAIProvider,
+  AnthropicProvider,
+  OpenAIEmbedder,
+  estimateCost,
+} from '../adapters/index.js';
 import { OpenRouterProvider } from '@devdigest/reviewer-core';
-import { estimateCost } from '../adapters/llm/pricing.js';
 import { PriceBook } from './price-book.js';
 import { ConfigError } from './errors.js';
 import { AgentsRepository } from '../modules/agents/repository.js';
+import { SkillsRepository } from '../modules/skills/repository.js';
 import { ReviewRepository } from '../modules/reviews/repository.js';
 import type { RepoIntel } from '../modules/repo-intel/types.js';
 import { RepoIntelService } from '../modules/repo-intel/service.js';
 import { type DepGraph, DepCruiseGraph } from '../adapters/depgraph/index.js';
 import { type Tokenizer, TiktokenTokenizer } from '../adapters/tokenizer/index.js';
+import { FflateArchiveReader } from '../adapters/archive/index.js';
+import type { ArchiveReader } from '../modules/skills/import/types.js';
 
 /**
  * DI container. One per app instance. Holds config, db, the JobRunner,
@@ -51,6 +56,8 @@ export interface ContainerOverrides {
   /** repo-intel T3 adapters — only the indexer pipeline reads these. */
   depgraph?: DepGraph;
   tokenizer?: Tokenizer;
+  /** Skills import (PR 3) — in-memory zip decompression. */
+  archive?: ArchiveReader;
 }
 
 export class Container {
@@ -71,11 +78,13 @@ export class Container {
   // runs). Constructed here, in the composition root, so consuming modules use
   // `container.agentsRepo` instead of reaching into another module's folder.
   private _agentsRepo?: AgentsRepository;
+  private _skillsRepo?: SkillsRepository;
   private _reviewRepo?: ReviewRepository;
   private _repoIntel?: RepoIntel;
   private _depgraph?: DepGraph;
   private _tokenizer?: Tokenizer;
   private _priceBook?: PriceBook;
+  private _archive?: ArchiveReader;
 
   constructor(config: AppConfig, db: Db, private overrides: ContainerOverrides = {}) {
     this.config = config;
@@ -94,6 +103,13 @@ export class Container {
 
   get agentsRepo(): AgentsRepository {
     return (this._agentsRepo ??= new AgentsRepository(this.db));
+  }
+
+  /** A second consumer now needs skills data-access directly: `ReviewRunExecutor`
+   *  persists `run_skills` at the exact point it already resolves `linkedSkills`
+   *  (see docs/specs/skills.md decision E6). */
+  get skillsRepo(): SkillsRepository {
+    return (this._skillsRepo ??= new SkillsRepository(this.db));
   }
 
   get reviewRepo(): ReviewRepository {
@@ -129,6 +145,14 @@ export class Container {
     if (this.overrides.tokenizer) return this.overrides.tokenizer;
     this._tokenizer ??= new TiktokenTokenizer();
     return this._tokenizer;
+  }
+
+  /** In-memory zip decompression for skill import. Tests inject a mock via
+   *  `ContainerOverrides.archive`. */
+  get archive(): ArchiveReader {
+    if (this.overrides.archive) return this.overrides.archive;
+    this._archive ??= new FflateArchiveReader();
+    return this._archive;
   }
 
   /**

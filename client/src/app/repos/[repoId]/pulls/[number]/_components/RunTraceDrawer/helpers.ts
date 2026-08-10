@@ -26,3 +26,10 @@ export function formatSeconds(ms: number): string {
 export function formatTokens(tokensIn: number, tokensOut: number): string {
   return `${(tokensIn / 1000).toFixed(0)}k→${(tokensOut / 1000).toFixed(1)}k`;
 }
+
+/** Client-side estimate for a PromptBlock's subtitle — "tokens IN this block",
+ *  not "tokens added by this block" (the real delta is the two-run
+ *  `stats.tokens_in` comparison the control experiment produces). */
+export function approxTokens(text: string): number {
+  return Math.ceil(text.length / 4);
+}

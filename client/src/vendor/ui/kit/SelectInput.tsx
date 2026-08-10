@@ -7,11 +7,15 @@ export function SelectInput({
   onChange,
   options,
   mono = true,
+  invalid,
 }: {
   value: string;
   onChange?: (v: string) => void;
   options: (string | { value: string; label: string })[];
   mono?: boolean;
+  /** Red border — pair with `FormField`'s `error` slot for a field-level
+   *  validation failure (e.g. from an API 422 response). */
+  invalid?: boolean;
 }) {
   return (
     <div
@@ -21,7 +25,7 @@ export function SelectInput({
         gap: 10,
         padding: "10px 12px",
         borderRadius: 7,
-        border: "1px solid var(--border-strong)",
+        border: "1px solid " + (invalid ? "var(--crit)" : "var(--border-strong)"),
         background: "var(--bg-elevated)",
         position: "relative",
       }}

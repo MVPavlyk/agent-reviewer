@@ -28,6 +28,9 @@ export const skillVersions = pgTable(
       .references(() => skills.id, { onDelete: 'cascade' }),
     version: integer('version').notNull(),
     body: text('body').notNull(),
+    /** Free-text, user-entered summary of what changed in this version. No
+     *  LLM auto-summarization (see docs/specs/skills.md decision E3). */
+    changeSummary: text('change_summary'),
     createdAt: now(),
   },
   (t) => ({ pk: primaryKey({ columns: [t.skillId, t.version] }) }),

@@ -13,7 +13,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { RepoIntelService } from '../src/modules/repo-intel/service.js';
-import { MockGitClient } from '../src/adapters/mocks.js';
+import { MockGitClient } from '../src/adapters/index.js';
 import { INDEXER_VERSION } from '../src/modules/repo-intel/constants.js';
 import type { RepoIntelRepository } from '../src/modules/repo-intel/repository.js';
 import type { IndexState } from '../src/modules/repo-intel/types.js';

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { FindingCategory } from './findings';
 
 /**
  * Conformance, Onboarding, Eval, Memory, Conventions, Skills,
@@ -128,8 +129,44 @@ export const Skill = z.object({
   enabled: z.boolean(),
   version: z.number().int(),
   evidence_files: z.array(z.string()).nullish(),
+  // List-cheap usage stats, computed alongside the base row (one aggregate
+  // join for the whole `GET /skills` list — see docs/specs/skills.md E7).
+  agents_count: z.number().int(),
+  pull_rate: z.number().min(0).max(1),
+  accept_rate: z.number().min(0).max(1),
 });
 export type Skill = z.infer<typeof Skill>;
+
+export const SkillVersion = z.object({
+  skill_id: z.string(),
+  version: z.number().int(),
+  body: z.string(),
+  change_summary: z.string().nullable(),
+  created_at: z.string(),
+});
+export type SkillVersion = z.infer<typeof SkillVersion>;
+
+// Per-category findings/cost breakdown for a skill's Stats tab. `category`
+// reuses FindingCategory from findings.ts — no redeclaration.
+export const SkillStatsCategoryBreakdown = z.object({
+  category: FindingCategory,
+  count: z.number().int(),
+  cost_usd: z.number(),
+});
+export type SkillStatsCategoryBreakdown = z.infer<typeof SkillStatsCategoryBreakdown>;
+
+// Attribution is APPROXIMATE and the UI says so (docs/specs/skills.md E4):
+// findings are never LLM-tagged to a specific skill; a run's cost is split
+// evenly across its findings, then apportioned to every skill active on that run.
+export const SkillStats = z.object({
+  agents_count: z.number().int(),
+  pull_rate: z.number().min(0).max(1),
+  accept_rate: z.number().min(0).max(1),
+  findings_by_category: z.array(SkillStatsCategoryBreakdown),
+  total_cost_usd: z.number(),
+  window_days: z.number().int(),
+});
+export type SkillStats = z.infer<typeof SkillStats>;
 
 export const CommunitySkill = z.object({
   name: z.string(),

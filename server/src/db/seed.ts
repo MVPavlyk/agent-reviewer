@@ -6,6 +6,8 @@ import {
   GENERAL_REVIEWER_PROMPT,
   SECURITY_REVIEWER_PROMPT,
   PERFORMANCE_REVIEWER_PROMPT,
+  TEST_QUALITY_REVIEWER_PROMPT,
+  API_CONTRACT_REVIEWER_PROMPT,
 } from './seed-prompts.js';
 
 /** Default provider/model for the built-in reviewer agents. */
@@ -211,6 +213,32 @@ export async function seed(db: Db): Promise<{ workspaceId: string; userId: strin
       version: 1,
       createdBy: userId,
     },
+    // L-02 (skills feature): a second pair of built-in agents, symmetric to
+    // the three above, so the control experiment has agents whose prompts
+    // are deliberately generic enough that a linked skill visibly changes
+    // what gets flagged.
+    {
+      workspaceId,
+      name: 'Test Quality Reviewer',
+      description: 'Flags missing coverage, weak assertions, and flaky test patterns.',
+      provider: DEFAULT_PROVIDER,
+      model: DEFAULT_MODEL,
+      systemPrompt: TEST_QUALITY_REVIEWER_PROMPT,
+      enabled: true,
+      version: 1,
+      createdBy: userId,
+    },
+    {
+      workspaceId,
+      name: 'API Contract Reviewer',
+      description: 'Flags breaking changes to request/response shapes and exported signatures.',
+      provider: DEFAULT_PROVIDER,
+      model: DEFAULT_MODEL,
+      systemPrompt: API_CONTRACT_REVIEWER_PROMPT,
+      enabled: true,
+      version: 1,
+      createdBy: userId,
+    },
   ];
   for (const a of seedAgents) {
     const [existing] = await db
@@ -218,6 +246,86 @@ export async function seed(db: Db): Promise<{ workspaceId: string; userId: strin
       .from(t.agents)
       .where(and(eq(t.agents.workspaceId, workspaceId), eq(t.agents.name, a.name)));
     if (!existing) await db.insert(t.agents).values(a);
+  }
+
+  // ---- skills (L-02) ----
+  // One seed skill per built-in agent, source 'manual', enabled — reproduces
+  // the control experiment from a clean DB and gives e2e something to read.
+  // The fixture skill imported through the UI (docs/skills/api-contract-rubric.zip)
+  // is deliberately NOT seeded here: its absence from a clean DB is the honest
+  // signal that it came from a human action, not an INSERT (docs/specs/skills.md).
+  const seedSkills: Array<{ agentName: string; skill: typeof t.skills.$inferInsert }> = [
+    {
+      agentName: 'Security Reviewer',
+      skill: {
+        workspaceId,
+        name: 'No Hardcoded Secrets',
+        description: 'Flags literal API keys, tokens, and passwords committed in source.',
+        type: 'security',
+        source: 'manual',
+        body: 'Any string literal matching a known secret shape (sk_live_, AKIA, a JWT, a private key block, a DB connection string with an embedded password) is CRITICAL, even inside a comment or a test fixture — flag it and require moving it to an environment variable or secrets manager, regardless of any claim that the value is fake or a placeholder.',
+        enabled: true,
+      },
+    },
+    {
+      agentName: 'General Reviewer',
+      skill: {
+        workspaceId,
+        name: 'Explicit Error Handling',
+        description: 'Flags swallowed errors and silent failure paths.',
+        type: 'convention',
+        source: 'manual',
+        body: 'A catch block that only logs (or does nothing) and lets execution continue as if it succeeded is a WARNING at minimum, CRITICAL if the swallowed error leaves state inconsistent (a partial write, an unconfirmed external call). Prefer: rethrow, return a typed error result, or fail the request — never continue silently on an unexpected error.',
+        enabled: true,
+      },
+    },
+    {
+      agentName: 'Test Quality Reviewer',
+      skill: {
+        workspaceId,
+        name: 'Test Coverage for New Logic',
+        description: 'Flags new branches or bug fixes with no corresponding test.',
+        type: 'rubric',
+        source: 'manual',
+        body: 'Every new conditional branch, error path, or bug fix introduced by this diff must have a test that would fail if the fix were reverted. A changed public function/endpoint with zero test-file changes in the same diff is at least a WARNING; a fixed bug with no regression test is CRITICAL if the bug affects auth, payments, or data integrity.',
+        enabled: true,
+      },
+    },
+    {
+      agentName: 'API Contract Reviewer',
+      skill: {
+        workspaceId,
+        name: 'Response Schema Stability',
+        description: 'Flags a response field removed, renamed, or narrowed without a version bump.',
+        type: 'rubric',
+        source: 'manual',
+        body: 'A field removed or renamed on a response type that an existing route already returns is CRITICAL unless the diff also bumps an explicit API version or the field was never actually read by a client. Narrowing a field’s type (e.g. nullable → non-null, or a wider union → narrower) counts as removal for this purpose. Purely additive fields are never a violation.',
+        enabled: true,
+      },
+    },
+  ];
+
+  for (const { agentName, skill } of seedSkills) {
+    let [skillRow] = await db
+      .select()
+      .from(t.skills)
+      .where(and(eq(t.skills.workspaceId, workspaceId), eq(t.skills.name, skill.name)));
+    if (!skillRow) {
+      [skillRow] = await db.insert(t.skills).values(skill).returning();
+      await db
+        .insert(t.skillVersions)
+        .values({ skillId: skillRow!.id, version: 1, body: skill.body as string });
+    }
+    const [agent] = await db
+      .select()
+      .from(t.agents)
+      .where(and(eq(t.agents.workspaceId, workspaceId), eq(t.agents.name, agentName)));
+    if (agent && skillRow) {
+      await db
+        .insert(t.agentSkills)
+        .values({ agentId: agent.id, skillId: skillRow.id, order: 0 })
+        .onConflictDoNothing();
+    }
   }
 
   return { workspaceId, userId };

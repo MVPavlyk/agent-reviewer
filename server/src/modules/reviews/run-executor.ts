@@ -8,6 +8,8 @@ import type { ReviewRepository, FindingRow, PullRow, ReviewRow } from './reposit
 import { REVIEW_STRATEGY } from './constants.js';
 import { taskLine } from './helpers.js';
 import { loadDiff } from './diff-loader.js';
+import { selectSkillBodies } from '../skills/prompt-blocks.js';
+import type { SkillsRepository } from '../skills/repository.js';
 
 /** Thrown by a run when the user cancels it mid-flight (between map files). */
 export class RunCancelledError extends Error {
@@ -45,6 +47,7 @@ export class ReviewRunExecutor {
     private container: Container,
     private repo: ReviewRepository,
     private agents: Container['agentsRepo'],
+    private skillsRepo: SkillsRepository,
   ) {}
 
   /**
@@ -184,6 +187,29 @@ export class ReviewRunExecutor {
 
       const task = taskLine(pull) + rankNote;
 
+      // Skills — linked rubric/convention/security blocks (decision 1: a
+      // globally-disabled skill is excluded even when the agent link remains,
+      // per `selectSkillBodies`). The Live Log line below is a second,
+      // independent witness to what reached the prompt (besides the trace).
+      const skillLinks = await this.agents.linkedSkills(agent.id);
+      const skillBodies = selectSkillBodies(skillLinks);
+      const enabledLinks = skillLinks.filter((l) => l.skill.enabled);
+      if (skillBodies.length > 0) {
+        const names = enabledLinks
+          .slice()
+          .sort((a, b) => a.order - b.order)
+          .map((l) => l.skill.name);
+        runLog.info(`skills: ${skillBodies.length} enabled skill(s) attached — ${names.join(', ')}`);
+      }
+      // Stats attribution (docs/specs/skills.md Extension, E6) — persist
+      // WHICH skills (and which skill VERSION) actually reached the prompt,
+      // right at the point they're resolved. Only the enabled links match
+      // `selectSkillBodies`'s own filter, so `run_skills` and the trace agree.
+      await this.skillsRepo.insertRunSkills(
+        runId,
+        enabledLinks.map((l) => ({ skillId: l.skill.id, skillVersion: l.skill.version })),
+      );
+
       // ---- Engine: assemble → single-pass → grounding -----------------------
       // The pure review pipeline lives in @devdigest/reviewer-core (shared with
       // the CI runner). The service owns only I/O: repo-intel context resolution
@@ -204,6 +230,7 @@ export class ReviewRunExecutor {
         // PR author's description/body — untrusted; assemblePrompt wraps +
         // truncates it. Omitted when the PR has no body.
         ...(pull.body ? { prDescription: pull.body } : {}),
+        ...(skillBodies.length ? { skills: skillBodies } : {}),
         task,
         sessionId: `${repo.owner}/${repo.name}#${pull.number}:${agent.name}`,
         onEvent: (e) => runLog.event(e.kind, e.msg, e.data),

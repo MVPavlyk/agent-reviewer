@@ -8,6 +8,7 @@ export function TextInput({
   mono,
   type = "text",
   suffix,
+  invalid,
   ...rest
 }: {
   value: string;
@@ -16,6 +17,9 @@ export function TextInput({
   mono?: boolean;
   type?: string;
   suffix?: React.ReactNode;
+  /** Red border — pair with `FormField`'s `error` slot for a field-level
+   *  validation failure (e.g. from an API 422 response). */
+  invalid?: boolean;
 } & Omit<React.InputHTMLAttributes<HTMLInputElement>, "value" | "onChange" | "type" | "size">) {
   return (
     <div
@@ -25,7 +29,7 @@ export function TextInput({
         gap: 10,
         padding: "10px 12px",
         borderRadius: 7,
-        border: "1px solid var(--border-strong)",
+        border: "1px solid " + (invalid ? "var(--crit)" : "var(--border-strong)"),
         background: "var(--bg-elevated)",
       }}
     >
@@ -36,6 +40,7 @@ export function TextInput({
         value={value}
         placeholder={placeholder}
         onChange={(e) => onChange?.(e.target.value)}
+        aria-invalid={invalid || undefined}
         style={{
           flex: 1,
           fontSize: 14,

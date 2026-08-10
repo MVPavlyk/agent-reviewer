@@ -10,7 +10,7 @@ import { startPg, dockerAvailable, type PgFixture } from './helpers/pg.js';
 import { buildApp } from '../src/app.js';
 import { loadConfig } from '../src/platform/config.js';
 import { seed } from '../src/db/seed.js';
-import { MockGitHubClient } from '../src/adapters/mocks.js';
+import { MockGitHubClient } from '../src/adapters/index.js';
 import * as t from '../src/db/schema.js';
 import type { PrReviewComment } from '@devdigest/shared';
 

@@ -1,0 +1,105 @@
+{
+  "$schema": "./flow.schema.json",
+  "name": "Skills list renders a seeded skill; agent Skills tab renders the reorder hint",
+  "description": "Loads /skills and confirms a seeded skill (No Hardcoded Secrets, linked to Security Reviewer) is rendered. Then opens the Security Reviewer agent, switches to its Skills tab, and confirms the reorder hint copy renders \u2014 proving the tab wiring (docs/specs/skills.md PR 6) reached the deployed app. Read-only against seeded data, no model call.",
+  "steps": [
+    {
+      "cmd": [
+        "open",
+        "{BASE}/skills"
+      ],
+      "label": "load the skills page"
+    },
+    {
+      "cmd": [
+        "wait",
+        "--url",
+        "/skills"
+      ],
+      "label": "skills route reached"
+    },
+    {
+      "cmd": [
+        "wait",
+        "--load",
+        "networkidle"
+      ],
+      "label": "skills fetch settles"
+    },
+    {
+      "cmd": [
+        "wait",
+        "--text",
+        "No Hardcoded Secrets"
+      ],
+      "label": "seeded skill card is visible"
+    },
+    {
+      "cmd": [
+        "open",
+        "{BASE}/agents"
+      ],
+      "label": "load the agents page"
+    },
+    {
+      "cmd": [
+        "wait",
+        "--url",
+        "/agents"
+      ],
+      "label": "agents route reached"
+    },
+    {
+      "cmd": [
+        "wait",
+        "--load",
+        "networkidle"
+      ],
+      "label": "agents fetch settles"
+    },
+    {
+      "cmd": [
+        "find",
+        "text",
+        "Security Reviewer",
+        "click"
+      ],
+      "label": "open the seeded Security Reviewer agent"
+    },
+    {
+      "cmd": [
+        "wait",
+        "--url",
+        "/agents/"
+      ],
+      "label": "navigate to the agent editor route"
+    },
+    {
+      "cmd": [
+        "find",
+        "role",
+        "button",
+        "click",
+        "--name",
+        "Skills"
+      ],
+      "label": "switch to the Skills tab"
+    },
+    {
+      "cmd": [
+        "wait",
+        "--url",
+        "tab=skills"
+      ],
+      "label": "skills tab is active in the URL"
+    },
+    {
+      "cmd": [
+        "wait",
+        "--text",
+        "Order matters"
+      ],
+      "label": "the reorder hint copy renders"
+    }
+  ]
+}
