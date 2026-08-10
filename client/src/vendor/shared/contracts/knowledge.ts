@@ -174,15 +174,46 @@ export const CommunitySkill = z.object({
 export type CommunitySkill = z.infer<typeof CommunitySkill>;
 
 // ---- Conventions ----
+export const ConventionStatus = z.enum(['pending', 'accepted', 'rejected']);
+export type ConventionStatus = z.infer<typeof ConventionStatus>;
+
 export const ConventionCandidate = z.object({
   id: z.string(),
+  scan_id: z.string(),
+  title: z.string(),
   rule: z.string(),
-  evidence_path: z.string(),
-  evidence_snippet: z.string(),
-  confidence: z.number().min(0).max(1),
-  accepted: z.boolean(),
+  evidence_path: z.string().nullable(),
+  start_line: z.number().int().nullish(),
+  end_line: z.number().int().nullish(),
+  evidence_snippet: z.string().nullable(),
+  confidence: z.number().min(0).max(1).nullable(),
+  status: ConventionStatus,
+  created_at: z.string(),
+  decided_at: z.string().nullable(),
 });
 export type ConventionCandidate = z.infer<typeof ConventionCandidate>;
+
+export const ConventionScanStatus = z.enum(['running', 'done', 'failed']);
+export type ConventionScanStatus = z.infer<typeof ConventionScanStatus>;
+
+// Summary of the latest "Re-scan" run — drives the Conventions page subtitle
+// ("Detected from N sample files · last scan Xh ago") without a second round trip.
+export const ConventionScanSummary = z.object({
+  id: z.string(),
+  status: ConventionScanStatus,
+  sample_file_count: z.number().int(),
+  candidate_count: z.number().int(),
+  started_at: z.string(),
+  finished_at: z.string().nullable(),
+  error: z.string().nullable(),
+});
+export type ConventionScanSummary = z.infer<typeof ConventionScanSummary>;
+
+export const ConventionsListResponse = z.object({
+  conventions: z.array(ConventionCandidate),
+  latest_scan: ConventionScanSummary.nullable(),
+});
+export type ConventionsListResponse = z.infer<typeof ConventionsListResponse>;
 
 // ---- Agents ----
 export const Provider = z.enum(['openai', 'anthropic', 'openrouter']);

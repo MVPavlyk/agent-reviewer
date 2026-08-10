@@ -21,18 +21,19 @@ import {
   AnthropicProvider,
   OpenAIEmbedder,
   estimateCost,
-} from '../adapters/index.js';
+} from '../adapters';
 import { OpenRouterProvider } from '@devdigest/reviewer-core';
 import { PriceBook } from './price-book.js';
 import { ConfigError } from './errors.js';
 import { AgentsRepository } from '../modules/agents/repository.js';
 import { SkillsRepository } from '../modules/skills/repository.js';
+import { ConventionsRepository } from '../modules/conventions/repository.js';
 import { ReviewRepository } from '../modules/reviews/repository.js';
-import type { RepoIntel } from '../modules/repo-intel/types.js';
-import { RepoIntelService } from '../modules/repo-intel/service.js';
-import { type DepGraph, DepCruiseGraph } from '../adapters/depgraph/index.js';
-import { type Tokenizer, TiktokenTokenizer } from '../adapters/tokenizer/index.js';
-import { FflateArchiveReader } from '../adapters/archive/index.js';
+import type { RepoIntel } from '../modules/repo-intel';
+import { RepoIntelService } from '../modules/repo-intel';
+import { type DepGraph, DepCruiseGraph } from '../adapters/depgraph';
+import { type Tokenizer, TiktokenTokenizer } from '../adapters/tokenizer';
+import { FflateArchiveReader } from '../adapters/archive';
 import type { ArchiveReader } from '../modules/skills/import/types.js';
 
 /**
@@ -79,6 +80,7 @@ export class Container {
   // `container.agentsRepo` instead of reaching into another module's folder.
   private _agentsRepo?: AgentsRepository;
   private _skillsRepo?: SkillsRepository;
+  private _conventionsRepo?: ConventionsRepository;
   private _reviewRepo?: ReviewRepository;
   private _repoIntel?: RepoIntel;
   private _depgraph?: DepGraph;
@@ -110,6 +112,10 @@ export class Container {
    *  (see docs/specs/skills.md decision E6). */
   get skillsRepo(): SkillsRepository {
     return (this._skillsRepo ??= new SkillsRepository(this.db));
+  }
+
+  get conventionsRepo(): ConventionsRepository {
+    return (this._conventionsRepo ??= new ConventionsRepository(this.db));
   }
 
   get reviewRepo(): ReviewRepository {

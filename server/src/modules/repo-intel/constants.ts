@@ -29,6 +29,9 @@ export const EXCLUDED_DIRS = [
 /** [T1] Caller fan-out cap per changed symbol (ORDER BY rank DESC LIMIT N). */
 export const MAX_CALLERS_PER_SYMBOL = 20;
 
+/** Conventions detection: how many top-ranked sample files feed one scan. */
+export const CONVENTION_SAMPLE_FILE_COUNT = 40;
+
 /**
  * [T1] Bumped whenever the AST extractor or symbol schema changes. A mismatch
  * with `repo_index_state.indexer_version` forces a full reindex.
