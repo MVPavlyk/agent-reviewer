@@ -6,6 +6,7 @@ import React from "react";
 import { useTranslations } from "next-intl";
 import { Icon } from "@devdigest/ui";
 import type { PrFile } from "@/lib/types";
+import type { Severity } from "@devdigest/shared";
 import { AUTO_EXPAND_MAX_LINES } from "../constants";
 import { parsePatch, type Line } from "../helpers";
 import {
@@ -30,10 +31,34 @@ function threadsForLine(ln: Line, matched: Map<string, CommentThread[]>): Commen
   return out;
 }
 
-export function FileCard({ file, commenting }: { file: PrFile; commenting?: DiffCommentApi }) {
+export function FileCard({
+  file,
+  commenting,
+  defaultOpen,
+  findingCount,
+  summary,
+  severityByLine,
+  onFindingsClick,
+}: {
+  file: PrFile;
+  commenting?: DiffCommentApi;
+  /** Overrides the default `<= AUTO_EXPAND_MAX_LINES` auto-expand heuristic
+   *  (used by SmartDiffViewer: core files and files with findings start open,
+   *  boilerplate always starts collapsed). */
+  defaultOpen?: boolean;
+  /** Smart Diff "N findings" badge in the header, when > 0. */
+  findingCount?: number;
+  /** Smart Diff pseudocode summary badge — omitted while null/absent. */
+  summary?: string | null;
+  /** New-file line number → severity, for inline per-line severity badges. */
+  severityByLine?: Map<number, Severity>;
+  /** When provided, the findings badge becomes clickable — expands the file
+   *  and asks the caller to scroll to the first finding line. */
+  onFindingsClick?: () => void;
+}) {
   const t = useTranslations("shell");
   const [open, setOpen] = React.useState(
-    (file.additions ?? 0) + (file.deletions ?? 0) <= AUTO_EXPAND_MAX_LINES
+    defaultOpen ?? (file.additions ?? 0) + (file.deletions ?? 0) <= AUTO_EXPAND_MAX_LINES
   );
   const lines = React.useMemo(() => parsePatch(file.patch), [file.patch]);
 
@@ -53,13 +78,31 @@ export function FileCard({ file, commenting }: { file: PrFile; commenting?: Diff
     : 0;
 
   return (
-    <div style={s.fileCard}>
+    <div style={s.fileCard} data-file-path={file.path}>
       <div onClick={() => setOpen((o) => !o)} style={s.fileHeader}>
         <Icon.ChevronRight size={13} style={chevronFor(open)} />
         <Icon.FileText size={14} style={s.fileIcon} />
         <span className="mono" style={s.filePath}>
           {file.path}
         </span>
+        {summary && <span style={s.summaryBadge}>{summary}</span>}
+        {!!findingCount &&
+          findingCount > 0 &&
+          (onFindingsClick ? (
+            <button
+              type="button"
+              style={{ ...s.findingBadge, border: "none", cursor: "pointer" }}
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpen(true);
+                onFindingsClick();
+              }}
+            >
+              {t("diffViewer.findingsBadge", { count: findingCount })}
+            </button>
+          ) : (
+            <span style={s.findingBadge}>{t("diffViewer.findingsBadge", { count: findingCount })}</span>
+          ))}
         <span className="mono tnum" style={s.fileStat}>
           <span style={s.addText}>+{file.additions}</span>{" "}
           <span style={s.delText}>−{file.deletions}</span>
@@ -85,6 +128,7 @@ export function FileCard({ file, commenting }: { file: PrFile; commenting?: Diff
                 path={file.path}
                 threads={threadsForLine(ln, matched)}
                 commenting={commenting}
+                severity={ln.newNo != null ? severityByLine?.get(ln.newNo) : undefined}
               />
             ))
           )}

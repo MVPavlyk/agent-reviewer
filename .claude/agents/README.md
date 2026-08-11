@@ -50,6 +50,22 @@ every arrow in the diagram above is the calling session (or user) handing
 one agent's output to the next as a task prompt, not one agent invoking
 another directly.
 
+## Scoping a research call
+
+`researcher` shares one `maxTurns` budget between investigating and writing
+its final report — a broad, multi-part question (e.g. "server routes +
+client components + INSIGHTS across three packages" in one call) can burn
+the whole budget on tool calls before the report gets written, so the call
+returns with no report and the caller has to resume it via `SendMessage` to
+get the text out. That resume roughly doubles the call's token cost for no
+new information. When a research task spans more than ~2 independent areas,
+split it into separate `researcher` calls scoped to one area each (e.g.
+server-side facts vs. client-side facts) and dispatch them in parallel —
+this also cuts wall-clock time, since neither call depends on the other.
+Skip questions about packages the request has already ruled out of scope
+(e.g. don't ask about `reviewer-core/INSIGHTS.md` for a change that never
+touches `reviewer-core`).
+
 ## Permissions
 
 | Agent | `tools` | `disallowedTools` | Notes |

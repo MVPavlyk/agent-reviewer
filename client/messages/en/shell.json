@@ -40,6 +40,23 @@
     "reply": "Reply",
     "viewOnGitHub": "View on GitHub",
     "postedToGitHub": "Posts to GitHub immediately",
-    "outdatedTitle": "{count} comment(s) on older revisions"
+    "outdatedTitle": "{count} comment(s) on older revisions",
+    "findingsBadge": "{count, plural, one {# finding} other {# findings}}",
+    "smartOrder": "Smart order",
+    "originalOrder": "Original order",
+    "role": {
+      "core": {
+        "label": "Core",
+        "hint": "The substance of the change — review closely"
+      },
+      "wiring": {
+        "label": "Wiring",
+        "hint": "Hooks the core into the app"
+      },
+      "boilerplate": {
+        "label": "Boilerplate",
+        "hint": "Generated / mechanical — skim"
+      }
+    }
   }
 }

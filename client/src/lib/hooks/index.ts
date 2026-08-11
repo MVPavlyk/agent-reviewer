@@ -15,6 +15,7 @@ export {
   useDeleteRepo,
   usePulls,
   usePullDetail,
+  useSmartDiff,
   useContextFiles,
   useReindexContext,
 } from "./core";

@@ -1,8 +1,16 @@
 import type { Container } from '../../platform/container.js';
-import type { GitHubClient, PrMeta, PrDetail, PrReviewComment, PrCommentInput } from '@devdigest/shared';
+import type {
+  GitHubClient,
+  PrMeta,
+  PrDetail,
+  PrReviewComment,
+  PrCommentInput,
+  SmartDiff,
+} from '@devdigest/shared';
 import { AppError, NotFoundError } from '../../platform/errors.js';
 import { PullsRepository, type PullRow, type RepoRow } from './repository.js';
 import { deriveReviewStatus } from './status.js';
+import { buildSmartDiff } from './smart-diff.js';
 
 /** Structural logger — routes pass `req.log` (pino); tests can pass a stub or
  *  omit it entirely. */
@@ -179,6 +187,19 @@ export class PullsService {
         })),
       };
     }
+  }
+
+  /** Smart Diff — deterministic file classification + latest-review finding
+   *  lines, no GitHub call and no LLM call. Reads only what's already
+   *  persisted (`getDetail` fills `pr_files` on every PR open), so this stays
+   *  fast and works offline. */
+  async getSmartDiff(workspaceId: string, id: string): Promise<SmartDiff> {
+    const { pr } = await this.resolvePrAndRepo(workspaceId, id);
+    const [files, findingLines] = await Promise.all([
+      this.repo.listFiles(pr.id),
+      this.repo.latestReviewFindingLines(pr.id),
+    ]);
+    return buildSmartDiff(files, findingLines);
   }
 
   // ---- Inline review comments (Files changed tab) -------------------------

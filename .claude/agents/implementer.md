@@ -56,6 +56,19 @@ still spans multiple untouched packages, say so plainly in your report so the
 caller can choose to continue you or start a fresh instance with a handoff
 instead of resuming a long-growing one.
 
+## Turn budget
+
+Even a phase scoped to ~5 steps can exhaust `maxTurns` on reads, edits, and
+per-step typecheck runs before you reach the final test pass and report — a
+run that stops mid-step with no report and no verification output is a worse
+outcome than one split across two calls, because the caller can't tell what
+actually landed. Track your budget as you go. Once you're past roughly 80% of
+`maxTurns`, stop opening new files or starting new steps: run whatever
+verification the completed steps allow, and write the report now — mark
+unfinished steps `not started`/`partial` with the reason, rather than running
+out silently. If you hit this while steps remain, say so plainly in "Передано
+далі" so the caller knows to resume you or hand the rest to a fresh instance.
+
 ## When invoked
 
 1. Read the plan. Restate the steps you are about to execute, in order.
