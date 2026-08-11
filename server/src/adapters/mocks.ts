@@ -31,6 +31,8 @@ import type {
   AuthWorkspace,
   SecretsProvider,
   SecretKey,
+  DocFetcher,
+  DocFetchResult,
 } from '@devdigest/shared';
 import { parseUnifiedDiff } from './git/diff-parser.js';
 
@@ -326,5 +328,22 @@ export class MockSecretsProvider implements SecretsProvider {
   constructor(private secrets: Partial<Record<string, string>> = {}) {}
   async get(key: SecretKey): Promise<string | undefined> {
     return this.secrets[key as string];
+  }
+}
+
+// ---------- Mock DocFetcher (Intent Layer) ----------
+/** Deterministic, no-network doc fetcher for tests. Returns a caller-supplied
+ *  fixture by URL, or throws to simulate an unreachable/refused doc. */
+export class MockDocFetcher implements DocFetcher {
+  constructor(
+    private byUrl: Record<string, DocFetchResult | Error> = {},
+    private fallback?: DocFetchResult,
+  ) {}
+  async fetch(url: string): Promise<DocFetchResult> {
+    const entry = this.byUrl[url];
+    if (entry instanceof Error) throw entry;
+    if (entry) return entry;
+    if (this.fallback) return this.fallback;
+    throw new Error(`MockDocFetcher: no fixture for ${url}`);
   }
 }

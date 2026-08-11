@@ -1,15 +1,16 @@
 import { describe, it, expect } from 'vitest';
-import type { LLMProvider, StructuredResult } from '@devdigest/shared';
-import { MockLLMProvider, MockGitClient } from '../../server/src/adapters/mocks.js';
+import type { LLMProvider, StructuredRequest, StructuredResult } from '@devdigest/shared';
+import { MockLLMProvider, FIXTURE_DIFF } from './fixtures.js';
 import { reviewPullRequest } from '../src/index.js';
 
 /**
  * Engine-level test for reviewPullRequest (the core lifted out of the server's
- * runOneAgent). Uses the server's mock LLM + git so we exercise the real
+ * runOneAgent). Uses local test doubles (`./fixtures.ts` — reviewer-core must
+ * not import server's mocks, see its CLAUDE.md) so we exercise the real
  * assemble → completeStructured → reduce → grounding pipeline with no DB/SSE.
  */
 describe('reviewPullRequest (engine)', () => {
-  // One grounded finding (line 11 is in the MockGitClient diff) + one
+  // One grounded finding (line 11 is in FIXTURE_DIFF's hunk) + one
   // hallucinated finding (line 999) the grounding gate must drop.
   const fixture = {
     verdict: 'request_changes',
@@ -45,7 +46,7 @@ describe('reviewPullRequest (engine)', () => {
 
   it('single-pass: assembles, grounds, drops the hallucinated finding', async () => {
     const llm = new MockLLMProvider('openai', { structured: fixture });
-    const diff = await new MockGitClient().diff();
+    const diff = FIXTURE_DIFF;
 
     const events: string[] = [];
     const outcome = await reviewPullRequest({
@@ -69,12 +70,54 @@ describe('reviewPullRequest (engine)', () => {
     expect(events.some((m) => m.includes('Citation grounding'))).toBe(true);
   });
 
+  it('without intent, output is unchanged (Intent Layer regression guard)', async () => {
+    // Same fixture/inputs as the first test, called again with no `intent` —
+    // must reproduce the exact same grounding/score/prompt-slot behavior the
+    // engine had before the Intent Layer existed.
+    const llm = new MockLLMProvider('openai', { structured: fixture });
+    const diff = FIXTURE_DIFF;
+    const outcome = await reviewPullRequest({
+      systemPrompt: 'security reviewer',
+      model: 'gpt-4.1',
+      diff,
+      llm,
+      task: 'Review PR #482',
+    });
+    expect(outcome.grounding).toBe('1/2 passed');
+    expect(outcome.review.findings).toHaveLength(1);
+    expect(outcome.review.findings[0]!.scope).toBeUndefined();
+    expect(outcome.review.score).toBe(65);
+    expect(outcome.assembly.intent).toBeNull();
+    expect(outcome.assembly.user).not.toContain('PR intent & scope');
+  });
+
+  it('with intent: prompt gets the intent slot and findings are scope-tagged', async () => {
+    const llm = new MockLLMProvider('openai', { structured: fixture });
+    const diff = FIXTURE_DIFF;
+    const outcome = await reviewPullRequest({
+      systemPrompt: 'security reviewer',
+      model: 'gpt-4.1',
+      diff,
+      llm,
+      task: 'Review PR #482',
+      intent: {
+        summary: 'Rotates the Stripe secret key',
+        in_scope: ['stripe secret configuration'],
+        out_of_scope: [],
+      },
+    });
+    expect(outcome.assembly.intent).not.toBeNull();
+    expect(outcome.assembly.user).toContain('PR intent & scope');
+    // The surviving finding's title/file overlap the in_scope phrase's tokens.
+    expect(outcome.review.findings[0]!.scope).toBe('in_scope');
+  });
+
   it('score is deterministic from findings: a clean approve scores 100', async () => {
     // Model "approves" but reports a nonsense low score (the cheap-model bug).
     // The engine must ignore that and score the zero findings as a perfect 100.
     const clean = { verdict: 'approve', summary: 'looks good', score: 10, findings: [] };
     const llm = new MockLLMProvider('openai', { structured: clean });
-    const diff = await new MockGitClient().diff();
+    const diff = FIXTURE_DIFF;
 
     const outcome = await reviewPullRequest({
       systemPrompt: 'security reviewer',
@@ -90,7 +133,7 @@ describe('reviewPullRequest (engine)', () => {
 
   it('checkCancelled throwing aborts before the LLM call', async () => {
     const llm = new MockLLMProvider('openai', { structured: fixture });
-    const diff = await new MockGitClient().diff();
+    const diff = FIXTURE_DIFF;
     await expect(
       reviewPullRequest({
         systemPrompt: 's',
@@ -108,7 +151,7 @@ describe('reviewPullRequest (engine)', () => {
     const seen: (string | undefined)[] = [];
     const recorder: LLMProvider = {
       id: 'openrouter',
-      async completeStructured<T>(req): Promise<StructuredResult<T>> {
+      async completeStructured<T>(req: StructuredRequest<T>): Promise<StructuredResult<T>> {
         seen.push(req.sessionId);
         return {
           data: fixture as unknown as T,
@@ -130,7 +173,7 @@ describe('reviewPullRequest (engine)', () => {
         return [];
       },
     };
-    const diff = await new MockGitClient().diff();
+    const diff = FIXTURE_DIFF;
     await reviewPullRequest({ systemPrompt: 's', model: 'm', diff, llm: recorder, sessionId: 'sess-abc' });
     expect(seen.length).toBeGreaterThan(0);
     expect(seen.every((s) => s === 'sess-abc')).toBe(true);

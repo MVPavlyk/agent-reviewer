@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { Finding, Verdict } from './findings.js';
-import { Intent, SmartDiff } from './brief.js';
+import { Intent, IntentConfidence, IntentSource, SmartDiff } from './brief.js';
 
 /**
  * A2 — Review-Core API surface contracts. These extend the core
@@ -56,8 +56,23 @@ export const ReviewRunResponse = z.object({
 });
 export type ReviewRunResponse = z.infer<typeof ReviewRunResponse>;
 
-/** Intent persisted for a PR (the Intent plus the pr_id it scopes). */
-export const PrIntentRecord = Intent.extend({ pr_id: z.string() });
+/**
+ * Intent persisted for a PR: the classified Intent plus the pr_id it scopes
+ * and the observability metadata the IntentCard renders (confidence, which
+ * sources fed the classification, what was missing, and provenance).
+ */
+export const PrIntentRecord = Intent.extend({
+  pr_id: z.string(),
+  confidence: IntentConfidence,
+  sources: z.array(IntentSource),
+  missing_context: z.array(z.string()),
+  provider: z.string(),
+  model: z.string(),
+  generated_at: z.string(),
+  /** Snapshot of `pull_requests.updated_at` at classification time — lets the
+   *  UI detect the PR moved on since this intent was generated. */
+  source_updated_at: z.string().nullable(),
+});
 export type PrIntentRecord = z.infer<typeof PrIntentRecord>;
 
 /** Smart-diff response for a PR (the SmartDiff). */

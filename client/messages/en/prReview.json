@@ -103,6 +103,30 @@
     "emptyAllBody": "No open PRs found for this repo yet. Refresh to sync from GitHub.",
     "emptyStatusBody": "No PRs with status “{status}”."
   },
+  "intent": {
+    "title": "PR Intent & Scope",
+    "inScope": "In scope",
+    "outOfScope": "Out of scope",
+    "confidenceLow": "low confidence",
+    "confidenceHigh": "high confidence",
+    "sources": "Sources",
+    "sourceLabel": {
+      "title": "title",
+      "description": "description",
+      "linked_issue": "linked issue",
+      "plan_doc": "plan doc",
+      "file_list": "file list",
+      "hunk_headers": "diff structure"
+    },
+    "missingContext": "Missing context",
+    "generatedBy": "{provider}/{model} · {date}",
+    "rerun": "Re-run",
+    "classify": "Classify intent",
+    "classifying": "Classifying…",
+    "emptyTitle": "Intent not yet classified",
+    "emptyBody": "Classify this PR's intent and scope before reviewing — a cheap model call, run once per PR.",
+    "staleNotice": "PR updated since this intent was generated — re-run to refresh it."
+  },
   "timeline": {
     "goToReview": "Jump to this run’s findings below",
     "openTrace": "Open run trace & logs",

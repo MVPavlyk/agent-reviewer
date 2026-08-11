@@ -4,10 +4,11 @@
 
 import React from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api, API_BASE } from "../api";
+import { api, API_BASE, ApiError } from "../api";
 import { notify } from "../toast";
 import type {
   FindingActionKind,
+  PrIntentRecord,
   PrReviewComment,
   ReviewRecord,
   ReviewRunResponse,
@@ -213,4 +214,31 @@ export function useRunEvents(runIds: string[]) {
   }, [key]);
 
   return { events, running };
+}
+
+// ---- Intent Layer — PR intent & scope (IntentCard) ----
+/** The PR's classified intent, or `undefined` while loading. A 404 (not yet
+ *  classified) is a normal empty state, not an error — surfaced via
+ *  `notFound` so IntentCard can render its "Classify intent" placeholder. */
+export function usePrIntent(prId: string | null | undefined) {
+  const query = useQuery({
+    queryKey: ["pr-intent", prId],
+    queryFn: () => api.get<PrIntentRecord>(`/pulls/${prId}/intent`),
+    enabled: !!prId,
+    retry: (failureCount, error) => error instanceof ApiError && error.status === 404 ? false : failureCount < 2,
+  });
+  const notFound = query.isError && query.error instanceof ApiError && query.error.status === 404;
+  return { ...query, notFound };
+}
+
+/** (Re-)classify intent for a PR — the manual trigger (initial classify from
+ *  the empty state, or the "Re-run" button when the PR moved on). */
+export function useClassifyIntent(prId: string | null | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post<PrIntentRecord>(`/pulls/${prId}/intent`),
+    onSuccess: (data) => {
+      qc.setQueryData(["pr-intent", prId], data);
+    },
+  });
 }

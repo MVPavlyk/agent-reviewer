@@ -166,6 +166,30 @@ export interface GitHubClient {
   currentLogin(): Promise<string>;
 }
 
+// ---------- DocFetcher (Intent Layer — plan/spec doc linked from a PR body) ----------
+/**
+ * Fetches a plan/spec document whose URL was extracted from a PR's
+ * author-controlled body — a fully untrusted, attacker-controlled input.
+ * Implementations MUST guard against SSRF (https-only, block private/loopback/
+ * link-local ranges before AND after DNS resolution, manual redirect handling
+ * with per-hop revalidation, a timeout, and a response-body size cap) — see
+ * `server/src/adapters/docfetcher/http.ts`.
+ */
+export interface DocFetchResult {
+  /** Final URL after any redirects. */
+  url: string;
+  /** Response content-type (without parameters), one of the allowlisted values. */
+  contentType: string;
+  /** Response body, decoded as UTF-8 text, capped in size. */
+  text: string;
+}
+
+export interface DocFetcher {
+  /** Throws on any guard failure (non-https, private address, timeout, too
+   *  many redirects, oversized body, disallowed content-type, HTTP error). */
+  fetch(url: string): Promise<DocFetchResult>;
+}
+
 // ---------- Git (simple-git, heavy) ----------
 export interface CloneOptions {
   depth?: number;

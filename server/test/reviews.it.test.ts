@@ -119,6 +119,15 @@ d('A2 reviews + agents (Testcontainers pg)', () => {
         git: new MockGitClient({ diff: DIFF }),
         llm: {
           [provider]: new MockLLMProvider(provider, { structured }),
+          // Intent Layer's lazy-auto classification defaults to 'openrouter'
+          // (FEATURE_MODELS['review_intent']) — inject a mock so these tests
+          // never attempt a real network call regardless of local secrets,
+          // and so runOneAgent's prompt-building isn't delayed by it.
+          openrouter: new MockLLMProvider('openai', {
+            structuredBySchema: {
+              Intent: { summary: 'test PR', in_scope: [], out_of_scope: [] },
+            },
+          }),
         },
       },
     });

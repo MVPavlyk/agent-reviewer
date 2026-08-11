@@ -52,7 +52,13 @@ the file is a broken plan.
    on this task in section 2 of the plan. This is a hard requirement of the
    repository's session protocol, not an optional step.
 4. Read the actual code you intend to change or extend. Never plan against an
-   assumed structure — open the files and cite them with `path:line`.
+   assumed structure — open the files and cite them with `path:line`. Exception:
+   if the caller's prompt already supplies verified findings with `path:line`
+   citations (e.g. a researcher report's "Коротко для наступного агента"
+   block), trust those as already-established facts — don't re-open a file
+   solely to re-confirm a citation you were already handed. Spend your own
+   reads on files the caller did not already cover, or on a citation that looks
+   internally inconsistent.
 5. Invoke any project skill you need beyond the preloaded ones (`Skill` is
    available; use `drizzle-orm-patterns`, `zod`, `fastify-best-practices`,
    `next-best-practices`, `import-hygiene`, `typescript-expert`,
