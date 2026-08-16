@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "devdigest": {
+      "command": "/Users/oyi.21.11.00075/.local/node/bin/node",
+      "args": [
+        "/Users/oyi.21.11.00075/WebstormProjects/agent-reviewer/mcp/node_modules/tsx/dist/cli.mjs",
+        "--tsconfig",
+        "/Users/oyi.21.11.00075/WebstormProjects/agent-reviewer/mcp/tsconfig.json",
+        "/Users/oyi.21.11.00075/WebstormProjects/agent-reviewer/mcp/src/index.ts"
+      ],
+      "cwd": "/Users/oyi.21.11.00075/WebstormProjects/agent-reviewer/mcp"
+    }
+  }
+}
