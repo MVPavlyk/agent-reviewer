@@ -64,7 +64,41 @@ export const s = {
     color: "var(--text-primary)",
     paddingRight: 12,
   } satisfies CSSProperties,
+  lineSeverity: { flexShrink: 0, alignSelf: "center", marginRight: 10 } satisfies CSSProperties,
+  findingBadge: {
+    display: "inline-flex",
+    alignItems: "center",
+    fontSize: 12,
+    color: "var(--warn)",
+    background: "var(--warn-bg)",
+    padding: "1px 8px",
+    borderRadius: 5,
+    fontWeight: 600,
+  } satisfies CSSProperties,
+  summaryBadge: {
+    display: "inline-flex",
+    alignItems: "center",
+    fontSize: 12,
+    color: "var(--text-secondary)",
+    background: "var(--bg-hover)",
+    padding: "1px 8px",
+    borderRadius: 5,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+    maxWidth: 220,
+  } satisfies CSSProperties,
+  roleSection: { display: "flex", flexDirection: "column", gap: 10 } satisfies CSSProperties,
+  roleHeader: { display: "flex", alignItems: "center", gap: 10 } satisfies CSSProperties,
+  roleLabel: { fontSize: 13, fontWeight: 700, color: "var(--text-primary)" } satisfies CSSProperties,
+  roleHint: { fontSize: 12, fontStyle: "italic", color: "var(--text-muted)" } satisfies CSSProperties,
+  roleCount: { fontSize: 12, color: "var(--text-muted)", marginLeft: "auto" } satisfies CSSProperties,
 } as const;
+
+/** Coloured dot indicating a Smart Diff role (core/wiring/boilerplate). */
+export function roleDotFor(color: string): CSSProperties {
+  return { width: 8, height: 8, borderRadius: 99, background: color, flexShrink: 0 };
+}
 
 /** Chevron rotates 90deg when the file card is open. */
 export function chevronFor(open: boolean): CSSProperties {

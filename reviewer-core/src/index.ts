@@ -34,6 +34,9 @@ export {
 // Map-reduce helpers (reduce partials, slice a file's diff).
 export { reduceReviews, sliceDiff } from './review/reduce.js';
 
+// Intent Layer — deterministic (non-LLM) scope filter + prompt digest formatter.
+export { applyScopeFilter, formatIntentDigest, type ScopeIntent } from './review/scope.js';
+
 // The engine entry point: given (diff + resolved agent inputs + LLM) → grounded Review.
 export {
   reviewPullRequest,

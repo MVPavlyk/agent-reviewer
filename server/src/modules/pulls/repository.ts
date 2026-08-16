@@ -199,4 +199,54 @@ export class PullsRepository {
     for (const [prId, list] of byPr) out.set(prId, rollupSeverities(list));
     return out;
   }
+
+  /** Finding line numbers per file, from the PR's LATEST review run only
+   *  (not every review ever run). "Latest run" = the most recent
+   *  `kind: 'review'` row's `run_id`; a multi-agent run produces several
+   *  `reviews` sharing one `run_id`, so every review from that run counts —
+   *  not just the single newest row. Same join shape as `findingsByPr`
+   *  (findings → reviews, `kind='review'`, `isNull(dismissedAt)`), grouped in
+   *  JS. Each finding's `start_line..end_line` range is expanded to
+   *  individual line numbers. A PR with no review yet returns an empty Map. */
+  async latestReviewFindingLines(prId: string): Promise<Map<string, number[]>> {
+    const out = new Map<string, number[]>();
+
+    const [latest] = await this.db
+      .select({ id: t.reviews.id, runId: t.reviews.runId })
+      .from(t.reviews)
+      .where(and(eq(t.reviews.prId, prId), eq(t.reviews.kind, 'review')))
+      .orderBy(desc(t.reviews.createdAt))
+      .limit(1);
+    if (!latest) return out;
+
+    const reviewIds =
+      latest.runId != null
+        ? (
+            await this.db
+              .select({ id: t.reviews.id })
+              .from(t.reviews)
+              .where(
+                and(
+                  eq(t.reviews.prId, prId),
+                  eq(t.reviews.kind, 'review'),
+                  eq(t.reviews.runId, latest.runId),
+                ),
+              )
+          ).map((r) => r.id)
+        : [latest.id];
+
+    const rows = await this.db
+      .select({ file: t.findings.file, startLine: t.findings.startLine, endLine: t.findings.endLine })
+      .from(t.findings)
+      .where(and(inArray(t.findings.reviewId, reviewIds), isNull(t.findings.dismissedAt)));
+
+    const byFile = new Map<string, Set<number>>();
+    for (const r of rows) {
+      const lines = byFile.get(r.file) ?? new Set<number>();
+      for (let line = r.startLine; line <= r.endLine; line++) lines.add(line);
+      byFile.set(r.file, lines);
+    }
+    for (const [file, lines] of byFile) out.set(file, [...lines].sort((a, b) => a - b));
+    return out;
+  }
 }

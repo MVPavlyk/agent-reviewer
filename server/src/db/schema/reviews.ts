@@ -1,7 +1,7 @@
 import { sql } from 'drizzle-orm';
 import { pgTable, uuid, text, integer, jsonb, timestamp, doublePrecision, index } from 'drizzle-orm/pg-core';
-import { now } from './_shared';
-import { workspaces } from './core';
+import { now } from './_shared.js';
+import { workspaces } from './core.js';
 import { pullRequests } from './pulls';
 
 // ============================================================ Review & findings
@@ -54,6 +54,10 @@ export const findings = pgTable(
     trifectaComponents: jsonb('trifecta_components').$type<string[]>(),
     acceptedAt: timestamp('accepted_at', { withTimezone: true }),
     dismissedAt: timestamp('dismissed_at', { withTimezone: true }),
+    /** In/out-of-scope relative to the PR's Intent, set by the deterministic
+     *  scope filter (reviewer-core/src/review/scope.ts); null when no intent
+     *  ran for this review. */
+    scope: text('scope'),
   },
   (table) => [
     // Backs the findings → reviews join used by the PR-list severity
@@ -66,9 +70,22 @@ export const prIntent = pgTable('pr_intent', {
   prId: uuid('pr_id')
     .primaryKey()
     .references(() => pullRequests.id, { onDelete: 'cascade' }),
-  intent: text('intent').notNull(),
+  summary: text('summary').notNull(),
   inScope: jsonb('in_scope').$type<string[]>().notNull().default(sql`'[]'::jsonb`),
   outOfScope: jsonb('out_of_scope').$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+  /** 'high' | 'low' — degrades to 'low' when the classifier's own inputs
+   *  (e.g. PR description) were thin. */
+  confidence: text('confidence').notNull().default('high'),
+  /** Which raw inputs actually fed the classification (IntentSource[]). */
+  sources: jsonb('sources').$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+  /** Human-readable degradation notes (never silent — see intent/sources.ts). */
+  missingContext: jsonb('missing_context').$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+  provider: text('provider').notNull(),
+  model: text('model').notNull(),
+  generatedAt: timestamp('generated_at', { withTimezone: true }).notNull().defaultNow(),
+  /** Snapshot of `pull_requests.updated_at` at classification time — lets the
+   *  UI detect the PR moved on since this intent was generated. */
+  sourceUpdatedAt: timestamp('source_updated_at', { withTimezone: true }),
 });
 
 export const prBrief = pgTable('pr_brief', {

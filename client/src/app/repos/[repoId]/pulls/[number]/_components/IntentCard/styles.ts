@@ -1,0 +1,126 @@
+import type { CSSProperties } from "react";
+
+/** Scope column tone — in-scope reads as "confirmed", out-of-scope as "flagged". */
+type Tone = "ok" | "crit";
+const toneColor = (tone: Tone) => (tone === "ok" ? "var(--ok)" : "var(--crit)");
+
+export const s = {
+  wrap: { marginBottom: 20 } satisfies CSSProperties,
+  summaryBox: {
+    display: "flex",
+    alignItems: "flex-start",
+    gap: 10,
+    borderLeftStyle: "solid",
+    borderLeftWidth: 3,
+    borderLeftColor: "var(--accent)",
+    background: "var(--accent-bg)",
+    borderRadius: 6,
+    padding: "10px 14px",
+    marginBottom: 16,
+  } satisfies CSSProperties,
+  summaryIcon: {
+    color: "var(--accent)",
+    flexShrink: 0,
+    marginTop: 2,
+  } satisfies CSSProperties,
+  summaryText: {
+    fontSize: 14,
+    fontStyle: "italic",
+    color: "var(--text-primary)",
+    lineHeight: 1.55,
+  } satisfies CSSProperties,
+  scopeGrid: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 16,
+    marginBottom: 14,
+  } satisfies CSSProperties,
+  scopeColumnLabel: (tone: Tone): CSSProperties => ({
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+    fontSize: 11,
+    fontWeight: 700,
+    letterSpacing: "0.05em",
+    textTransform: "uppercase",
+    color: toneColor(tone),
+    marginBottom: 8,
+  }),
+  scopeList: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 6,
+    fontSize: 13,
+    color: "var(--text-secondary)",
+  } satisfies CSSProperties,
+  scopeEmpty: {
+    color: "var(--text-muted)",
+  } satisfies CSSProperties,
+  scopeItem: {
+    display: "flex",
+    alignItems: "flex-start",
+    gap: 8,
+  } satisfies CSSProperties,
+  scopeDot: (tone: Tone): CSSProperties => ({
+    width: 5,
+    height: 5,
+    borderRadius: 99,
+    marginTop: 7,
+    flexShrink: 0,
+    background: toneColor(tone),
+  }),
+  metaRow: {
+    display: "flex",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 8,
+    fontSize: 12,
+    color: "var(--text-muted)",
+    marginBottom: 10,
+  } satisfies CSSProperties,
+  metaLabel: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 5,
+  } satisfies CSSProperties,
+  missingContext: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 4,
+    fontSize: 12.5,
+    color: "var(--warn)",
+    background: "var(--warn-bg)",
+    border: "1px solid var(--warn)",
+    borderRadius: 6,
+    padding: "8px 10px",
+    marginBottom: 10,
+  } satisfies CSSProperties,
+  missingContextTitle: {
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+  } satisfies CSSProperties,
+  staleNotice: {
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+    fontSize: 12.5,
+    color: "var(--warn)",
+    marginBottom: 10,
+  } satisfies CSSProperties,
+  footer: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    borderTop: "1px solid var(--border)",
+    paddingTop: 10,
+  } satisfies CSSProperties,
+  generatedBy: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 5,
+    fontSize: 11.5,
+    color: "var(--text-muted)",
+  } satisfies CSSProperties,
+} as const;

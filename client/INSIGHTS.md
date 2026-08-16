@@ -14,6 +14,8 @@ Entry format (one line, dated, anchored to a file, a command, or an exact error)
 
 ## What Doesn't Work
 - **2026-08-02** — Rendering a `FindingRecord.file` (full repo path) unbounded in a narrow popover/tooltip breaks layout for deeply-nested paths — show only the basename (`path.slice(path.lastIndexOf("/") + 1)`) and put the full path in a `title` tooltip instead — `client/src/app/repos/[repoId]/pulls/[number]/_components/RunHistory/FindingsPreviewList.tsx:8`
+- **2026-08-11** — Don't partially mock the `@/lib/hooks` barrel with `vi.importOriginal()` when the test also separately mocks one of the modules it re-exports — `client/src/lib/hooks/index.ts` — the barrel's `importOriginal()` pulls in that module's real exports, which conflicts with a partial `vi.mock()` on the same module elsewhere in the test.
+  Fix: skip `importOriginal()` and return only the symbols the component needs, e.g. `vi.mock("@/lib/hooks", () => ({ useSmartDiff: fn, usePrReviews: fn2 }))`. Hit this testing `DiffTab`, which pulls both `useSmartDiff` (from `./core`) and `usePrReviews` (from `./reviews`) through the barrel.
 
 ## Codebase Patterns
 - **2026-08-01** — The PR list is a CSS-grid fake table: a new column means editing `GRID`, `COLUMN_KEYS` and the row cells together. Insert before `updated`, since `page.tsx` right-aligns only `COLUMN_KEYS[length-1]` — `client/src/app/repos/[repoId]/pulls/constants.ts:27`

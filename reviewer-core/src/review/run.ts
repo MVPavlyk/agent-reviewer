@@ -10,6 +10,7 @@ import { Review as ReviewSchema } from '@devdigest/shared';
 import { assemblePrompt } from '../prompt.js';
 import { groundFindings, groundingSummary } from '../grounding.js';
 import { reduceReviews, scoreFromFindings, sliceDiff } from './reduce.js';
+import { applyScopeFilter, formatIntentDigest, type ScopeIntent } from './scope.js';
 
 /**
  * reviewPullRequest — the review engine entry point.
@@ -71,6 +72,14 @@ export interface ReviewInput {
   /** PR author's description/body (untrusted; truncated + delimiter-wrapped in
       the prompt). Empty/undefined → section omitted. */
   prDescription?: string;
+  /**
+   * PR's classified Intent (Intent Layer — a prior, cheap LLM call; NOT made
+   * here). Renders the `## PR intent & scope` prompt slot AND drives the
+   * deterministic post-grounding scope filter (`applyScopeFilter`).
+   * Undefined → prompt slot omitted, scope filter is a no-op — output is
+   * BIT-IDENTICAL to a pre-Intent-Layer run (regression-tested).
+   */
+  intent?: { summary: string; in_scope: string[]; out_of_scope: string[] };
   /** Task framing line, e.g. "Review PR #482 …". */
   task?: string;
   /** Override the structured-output retry budget. */
@@ -135,6 +144,7 @@ export async function reviewPullRequest(input: ReviewInput): Promise<ReviewOutco
     callers: input.callers,
     repoMap: input.repoMap,
     prDescription: input.prDescription,
+    intent: input.intent ? formatIntentDigest(input.intent) : undefined,
     task: input.task,
   };
 
@@ -201,11 +211,18 @@ export async function reviewPullRequest(input: ReviewInput): Promise<ReviewOutco
   }
   emit('result', `Citation grounding: ${grounding}`);
 
+  // Intent Layer — deterministic (non-LLM) scope filter. Runs AFTER grounding,
+  // never removes a finding (see scope.ts's invariants); a no-op when no
+  // intent was supplied, so the no-intent path stays bit-identical.
+  const scopedFindings = input.intent
+    ? applyScopeFilter(ground.kept, input.intent satisfies ScopeIntent)
+    : ground.kept;
+
   // Score is derived from the findings that SURVIVED grounding (not the model's
   // self-reported number, and not the pre-grounding set) so the score, the
   // findings list, and the deterministic event always agree.
   return {
-    review: { ...merged, findings: ground.kept, score: scoreFromFindings(ground.kept) },
+    review: { ...merged, findings: scopedFindings, score: scoreFromFindings(scopedFindings) },
     grounding,
     dropped: ground.dropped,
     mode,

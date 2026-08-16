@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
-import type { PrMeta, PrDetail, PrReviewComment } from '@devdigest/shared';
+import type { PrMeta, PrDetail, PrReviewComment, SmartDiff } from '@devdigest/shared';
 import { PrCommentInput } from '@devdigest/shared';
 import { getContext } from '../_shared/context.js';
 import { IdParams } from '../_shared/schemas.js';
@@ -13,6 +13,8 @@ import { PullsService } from './service.js';
  *                          synced from GitHub, persisted). `status` is GitHub's
  *                          merge state (open/merged/closed).
  *   GET /pulls/:id       → full PR detail (diff/files, commits, body, linked issue)
+ *   GET /pulls/:id/smart-diff → files grouped core/wiring/boilerplate + latest
+ *                          review's finding lines, no GitHub/LLM call
  *
  * Import is idempotent (unique repo_id+number). Review trigger is MANUAL
  * and owned by A2 — this module only imports/reads.
@@ -29,6 +31,11 @@ export default async function pullsRoutes(appBase: FastifyInstance) {
   app.get('/pulls/:id', { schema: { params: IdParams } }, async (req): Promise<PrDetail> => {
     const { workspaceId } = await getContext(app.container, req);
     return service.getDetail(workspaceId, req.params.id, req.log);
+  });
+
+  app.get('/pulls/:id/smart-diff', { schema: { params: IdParams } }, async (req): Promise<SmartDiff> => {
+    const { workspaceId } = await getContext(app.container, req);
+    return service.getSmartDiff(workspaceId, req.params.id);
   });
 
   app.get(

@@ -18,6 +18,9 @@ import type {
   SpecFile,
   IndexStatus,
 } from "../types";
+// Type-only — a runtime import of a value from @devdigest/shared's barrel
+// would drag the whole vendored contract set into the client bundle.
+import type { SmartDiff } from "@devdigest/shared";
 
 // ---- Settings (F1: GET/PUT /settings, POST /settings/test-connection) ----
 export function useSettings() {
@@ -116,6 +119,17 @@ export function usePullDetail(prId: string | number | null | undefined) {
     queryKey: ["pull", prId],
     queryFn: () => api.get<PrDetail>(`/pulls/${prId}`),
     enabled: prId != null,
+  });
+}
+
+/** Smart Diff (F1: GET /pulls/:id/smart-diff) — files grouped into
+ *  core/wiring/boilerplate + a split suggestion, computed deterministically
+ *  from already-imported pr_files + the latest review's findings. No LLM call. */
+export function useSmartDiff(prId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["smart-diff", prId],
+    queryFn: () => api.get<SmartDiff>(`/pulls/${prId}/smart-diff`),
+    enabled: !!prId,
   });
 }
 

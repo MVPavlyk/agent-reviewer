@@ -14,6 +14,8 @@ import { ReviewService } from './service.js';
  *   GET    /runs/:id/trace                             → the single-document RunTrace
  *   GET    /pulls/:id/reviews                          → persisted reviews + findings for a PR
  *   POST   /findings/:id/(accept|dismiss)              → finding actions
+ *   GET    /pulls/:id/intent                            → PrIntentRecord | 404 (not yet classified)
+ *   POST   /pulls/:id/intent                            → (re-)classify intent; returns PrIntentRecord
  */
 const FINDING_ACTIONS = ['accept', 'dismiss'] as const;
 export default async function reviewsRoutes(appBase: FastifyInstance) {
@@ -138,6 +140,26 @@ export default async function reviewsRoutes(appBase: FastifyInstance) {
     if (!ok) throw new NotFoundError('Review not found');
     return { ok: true };
   });
+
+  // ---- Intent Layer ---------------------------------------------------------
+  app.get('/pulls/:id/intent', { schema: { params: IdParams } }, async (req) => {
+    const { workspaceId } = await getContext(container, req);
+    const intent = await service.getIntent(workspaceId, req.params.id);
+    if (!intent) throw new NotFoundError('Intent not yet classified for this pull request');
+    return intent;
+  });
+
+  // Manual (re-)classification. Same rate-limit shape as /pulls/:id/review —
+  // each call is an external HTTP (plan doc / linked issue) + LLM call, but
+  // synchronous (`await`), not queued: the classifier is a cheap model.
+  app.post(
+    '/pulls/:id/intent',
+    { schema: { params: IdParams }, config: { rateLimit: { max: 5, timeWindow: '1 minute' } } },
+    async (req) => {
+      const { workspaceId } = await getContext(container, req);
+      return service.classifyIntent(workspaceId, req.params.id, req.log);
+    },
+  );
 
   // ---- Finding actions (accept / dismiss) ---------------------------------
   for (const action of FINDING_ACTIONS) {

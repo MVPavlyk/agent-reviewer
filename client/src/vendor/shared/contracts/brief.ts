@@ -6,8 +6,24 @@ import { z } from 'zod';
  */
 
 // ---- Intent ----
+/** How much of the classifier's own input it actually had to work with. */
+export const IntentConfidence = z.enum(['high', 'low']);
+export type IntentConfidence = z.infer<typeof IntentConfidence>;
+
+/** Which raw inputs fed the intent classification (never diff bodies — see
+ *  `server/src/modules/reviews/intent/sources.ts`). */
+export const IntentSource = z.enum([
+  'title',
+  'description',
+  'linked_issue',
+  'plan_doc',
+  'file_list',
+  'hunk_headers',
+]);
+export type IntentSource = z.infer<typeof IntentSource>;
+
 export const Intent = z.object({
-  intent: z.string(),
+  summary: z.string(),
   in_scope: z.array(z.string()),
   out_of_scope: z.array(z.string()),
 });

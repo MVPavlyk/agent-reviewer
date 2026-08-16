@@ -40,6 +40,12 @@ export const TrifectaEvidence = z.object({
 });
 export type TrifectaEvidence = z.infer<typeof TrifectaEvidence>;
 
+/** Set by the deterministic (non-LLM) scope filter (`reviewer-core/src/review/scope.ts`)
+ *  from the PR's classified Intent. `.nullish()` — absent when no intent was
+ *  available for the run (pre-Intent-Layer reviews, or classification failed). */
+export const FindingScope = z.enum(['in_scope', 'out_of_scope', 'unknown']);
+export type FindingScope = z.infer<typeof FindingScope>;
+
 /**
  * Finding — the atomic review unit. `start_line`/`end_line` are used by the
  * citation-grounding gate (must intersect a real diff hunk for diff-findings).
@@ -59,6 +65,8 @@ export const Finding = z.object({
   // Lethal-trifecta variant fields (present only when kind === 'lethal_trifecta')
   trifecta_components: z.array(TrifectaComponent).nullish(),
   evidence: z.array(TrifectaEvidence).nullish(),
+  /** In/out-of-scope relative to the PR's Intent; null when no intent ran. */
+  scope: FindingScope.nullish(),
 });
 export type Finding = z.infer<typeof Finding>;
 

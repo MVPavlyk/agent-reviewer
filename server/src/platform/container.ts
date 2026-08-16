@@ -6,6 +6,7 @@ import type {
   CodeIndex,
   Embedder,
   LLMProvider,
+  DocFetcher,
 } from '@devdigest/shared';
 import type { AppConfig } from './config.js';
 import type { Db } from '../db/client.js';
@@ -21,6 +22,7 @@ import {
   AnthropicProvider,
   OpenAIEmbedder,
   estimateCost,
+  HttpDocFetcher,
 } from '../adapters';
 import { OpenRouterProvider } from '@devdigest/reviewer-core';
 import { PriceBook } from './price-book.js';
@@ -59,6 +61,8 @@ export interface ContainerOverrides {
   tokenizer?: Tokenizer;
   /** Skills import (PR 3) — in-memory zip decompression. */
   archive?: ArchiveReader;
+  /** Intent Layer — plan/spec doc fetch behind SSRF guards. */
+  docFetcher?: DocFetcher;
 }
 
 export class Container {
@@ -87,6 +91,7 @@ export class Container {
   private _tokenizer?: Tokenizer;
   private _priceBook?: PriceBook;
   private _archive?: ArchiveReader;
+  private _docFetcher?: DocFetcher;
 
   constructor(config: AppConfig, db: Db, private overrides: ContainerOverrides = {}) {
     this.config = config;
@@ -159,6 +164,15 @@ export class Container {
     if (this.overrides.archive) return this.overrides.archive;
     this._archive ??= new FflateArchiveReader();
     return this._archive;
+  }
+
+  /** Intent Layer — fetches a plan/spec doc linked from a PR body, behind
+   *  SSRF guards (https-only, private-range blocking, capped/timeout). Tests
+   *  inject a mock via `ContainerOverrides.docFetcher`. */
+  get docFetcher(): DocFetcher {
+    if (this.overrides.docFetcher) return this.overrides.docFetcher;
+    this._docFetcher ??= new HttpDocFetcher();
+    return this._docFetcher;
   }
 
   /**

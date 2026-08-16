@@ -3,6 +3,8 @@
 "use client";
 
 import React from "react";
+import { SeverityBadge } from "@devdigest/ui";
+import type { Severity } from "@devdigest/shared";
 import { commentTargetFor, type CommentThread, type DiffCommentApi, cs } from "../comments";
 import { type Line } from "../helpers";
 import { s, lineRowFor, lineSignFor } from "../styles";
@@ -14,11 +16,14 @@ export function CodeLine({
   path,
   threads,
   commenting,
+  severity,
 }: {
   ln: Line;
   path: string;
   threads: CommentThread[];
   commenting?: DiffCommentApi;
+  /** Smart Diff finding severity anchored to this line (new-file line number). */
+  severity?: Severity;
 }) {
   const [hover, setHover] = React.useState(false);
   const [composing, setComposing] = React.useState(false);
@@ -38,6 +43,7 @@ export function CodeLine({
   return (
     <div
       style={cs.rowWrap}
+      data-diff-line={ln.newNo ?? ln.oldNo ?? undefined}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
     >
@@ -62,6 +68,11 @@ export function CodeLine({
         <span className="mono" style={s.lineText}>
           {ln.text || " "}
         </span>
+        {severity && (
+          <span style={s.lineSeverity}>
+            <SeverityBadge severity={severity} compact />
+          </span>
+        )}
       </div>
 
       {commenting &&

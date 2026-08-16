@@ -1,5 +1,5 @@
 import type { Container } from '../../platform/container.js';
-import type { FindingActionKind, RunEventKind, RunTrace } from '@devdigest/shared';
+import type { FindingActionKind, PrIntentRecord, RunEventKind, RunTrace } from '@devdigest/shared';
 import { AppError, NotFoundError } from '../../platform/errors.js';
 import type { AgentRow } from '../../db/rows.js';
 import { ReviewRepository } from './repository.js';
@@ -7,6 +7,8 @@ import { type ReviewDto, type ReviewDtoFinding } from './helpers.js';
 import { ReviewRunExecutor, type Logger } from './run-executor.js';
 import { actOnFinding as actOnFindingImpl } from './findings.js';
 import { reviewToDto } from './helpers.js';
+import { loadDiff } from './diff-loader.js';
+import { classifyAndStoreIntent } from './intent/service.js';
 
 // Re-export DTO types + converters for backward-compatible imports from
 // './service.js' (these previously lived here; logic now in ./helpers.ts).
@@ -175,5 +177,31 @@ export class ReviewService {
 
   async getRunTrace(runId: string): Promise<RunTrace | undefined> {
     return this.repo.getRunTrace(runId);
+  }
+
+  // ===========================================================================
+  // Intent Layer — GET/POST /pulls/:id/intent
+  // ===========================================================================
+
+  /** The persisted intent for a PR, or `undefined` if never classified. */
+  async getIntent(workspaceId: string, prId: string): Promise<PrIntentRecord | undefined> {
+    const pull = await this.repo.getPull(workspaceId, prId);
+    if (!pull) throw new NotFoundError('Pull request not found');
+    return this.repo.getIntent(prId);
+  }
+
+  /**
+   * Manual (re-)classification: `getPull → getRepo → loadDiff →
+   * collectIntentSources → classifyIntent → upsertIntent`, then returns the
+   * persisted record. Synchronous — the classifier is a cheap model, so this
+   * is NOT routed through JobRunner (unlike the full review run).
+   */
+  async classifyIntent(workspaceId: string, prId: string, logger?: Logger): Promise<PrIntentRecord> {
+    const pull = await this.repo.getPull(workspaceId, prId);
+    if (!pull) throw new NotFoundError('Pull request not found');
+    const repo = await this.repo.getRepo(pull.repoId);
+    if (!repo) throw new NotFoundError('Repo not found');
+    const diff = await loadDiff(this.container, this.repo, workspaceId, pull, repo);
+    return classifyAndStoreIntent(this.container, this.repo, workspaceId, pull, repo, diff, logger);
   }
 }

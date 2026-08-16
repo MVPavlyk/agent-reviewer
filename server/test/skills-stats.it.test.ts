@@ -76,7 +76,16 @@ d('skills stats — end to end', () => {
       overrides: {
         embedder: new MockEmbedder(),
         git: new MockGitClient({ diff: DIFF }),
-        llm: { openai: new MockLLMProvider('openai', { structured: REVIEW_FIXTURE }) },
+        llm: {
+          openai: new MockLLMProvider('openai', { structured: REVIEW_FIXTURE }),
+          // Intent Layer's lazy-auto classification defaults to 'openrouter' —
+          // mock it so these tests never attempt a real network call.
+          openrouter: new MockLLMProvider('openai', {
+            structuredBySchema: {
+              Intent: { summary: 'test PR', in_scope: [], out_of_scope: [] },
+            },
+          }),
+        },
       },
     });
   }

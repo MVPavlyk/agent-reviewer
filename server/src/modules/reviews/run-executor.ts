@@ -1,5 +1,5 @@
 import type { Container } from '../../platform/container.js';
-import type { Provider, Review, RunTrace, UnifiedDiff } from '@devdigest/shared';
+import type { PrIntentRecord, Provider, Review, RunTrace, UnifiedDiff } from '@devdigest/shared';
 import { reviewPullRequest, countBlockers } from '@devdigest/reviewer-core';
 import { RunLogger } from '../../platform/run-logger.js';
 import * as schema from '../../db/schema.js';
@@ -10,6 +10,7 @@ import { taskLine } from './helpers.js';
 import { loadDiff } from './diff-loader.js';
 import { selectSkillBodies } from '../skills/prompt-blocks.js';
 import type { SkillsRepository } from '../skills/repository.js';
+import { classifyAndStoreIntent } from './intent/service.js';
 
 /** Thrown by a run when the user cancels it mid-flight (between map files). */
 export class RunCancelledError extends Error {
@@ -108,6 +109,32 @@ export class ReviewRunExecutor {
     }
     runLog.info(`Diff ready — ${diff.files.length} changed file(s); starting ${jobs.length} agent run(s)`);
 
+    // Intent Layer — lazy-auto: classify once per PR if missing, never block
+    // the review on a stale-but-present intent (re-classification is manual,
+    // via POST /pulls/:id/intent — see the Intent Layer plan's v1 decision).
+    // A classification failure NEVER fails the review: caught here, logged,
+    // and every agent below runs with `intent: undefined` (prompt slot +
+    // scope filter both become no-ops — output unchanged from pre-Intent-Layer).
+    let intent: PrIntentRecord | undefined;
+    try {
+      intent = await this.repo.getIntent(pull.id);
+      if (!intent) {
+        runLog.info('intent: not yet classified — classifying now');
+        intent = await classifyAndStoreIntent(this.container, this.repo, workspaceId, pull, repo, diff, logger);
+      } else if (
+        intent.source_updated_at &&
+        pull.updatedAt &&
+        new Date(intent.source_updated_at).getTime() < pull.updatedAt.getTime()
+      ) {
+        runLog.info(
+          'intent: PR updated since this intent was generated — re-run intent classification manually to refresh it',
+        );
+      }
+    } catch (err) {
+      runLog.info(`intent: classification failed — continuing without intent (${(err as Error).message})`);
+      intent = undefined;
+    }
+
     for (const { agent, runId } of jobs) {
       const agentStart = Date.now();
       logger?.info(
@@ -115,7 +142,7 @@ export class ReviewRunExecutor {
         `review: agent "${agent.name}" started (${agent.provider}/${agent.model})`,
       );
       try {
-        const outcome = await this.runOneAgent(workspaceId, pull, repo, diff, agent, runId, runLog);
+        const outcome = await this.runOneAgent(workspaceId, pull, repo, diff, agent, runId, runLog, intent);
         logger?.info(
           {
             runId,
@@ -147,6 +174,7 @@ export class ReviewRunExecutor {
     agent: AgentRow,
     runId: string,
     parentLog: RunLogger,
+    intent: PrIntentRecord | undefined,
   ): Promise<RunOutcome> {
     const start = Date.now();
     // Narrow the fanned-out pre-work logger to THIS run; the shared diff/intent
@@ -230,6 +258,11 @@ export class ReviewRunExecutor {
         // PR author's description/body — untrusted; assemblePrompt wraps +
         // truncates it. Omitted when the PR has no body.
         ...(pull.body ? { prDescription: pull.body } : {}),
+        // Intent Layer — undefined when classification is missing/failed;
+        // reviewer-core treats that identically to a pre-Intent-Layer run.
+        ...(intent
+          ? { intent: { summary: intent.summary, in_scope: intent.in_scope, out_of_scope: intent.out_of_scope } }
+          : {}),
         ...(skillBodies.length ? { skills: skillBodies } : {}),
         task,
         sessionId: `${repo.owner}/${repo.name}#${pull.number}:${agent.name}`,
