@@ -68,9 +68,9 @@ export const toolDefs: ToolDef[] = [
   {
     name: 'get_blast_radius',
     description:
-      'Get the blast radius of a change (not implemented yet — returns a stub pointing to alternatives).',
+      "Get a pull request's blast radius: changed symbols, their downstream callers, and the HTTP endpoints/cron jobs reachable through them.",
     inputShape: getBlastRadiusInputShape,
     annotations: READ_ONLY,
-    handler: async () => getBlastRadius(),
+    handler: async (args) => getBlastRadius(args),
   },
 ];

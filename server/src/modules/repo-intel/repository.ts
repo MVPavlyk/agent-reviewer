@@ -128,6 +128,15 @@ export interface ResolvedCallerRow {
   toSymbol: string;
   line: number;
   rank: number;
+  /** False when the caller file has no `file_rank` row (rank coalesced to 0) — R3. */
+  hasRank: boolean;
+}
+
+/** One hop of the reverse import-graph BFS from a changed ("root") file. */
+export interface ReverseDependentRow {
+  rootFile: string;
+  file: string;
+  depth: number;
 }
 
 export class RepoIntelRepository {
@@ -499,22 +508,29 @@ export class RepoIntelRepository {
       .where(and(eq(t.symbols.repoId, repoId), inArray(t.symbols.path, paths)));
   }
 
-  /** Resolved cross-file callers of symbols declared in `declFiles`. */
+  /**
+   * Resolved cross-file callers of symbols declared in `declFiles`. `leftJoin`
+   * against `file_rank` (not `innerJoin`) — a caller file with no rank row
+   * must still surface as a caller (rank coalesced to 0), otherwise an empty
+   * `file_rank` silently drops every caller and looks identical to "no
+   * impact" (R3). `hasRank` lets the service tell the two cases apart.
+   */
   async getResolvedCallers(
     repoId: string,
     declFiles: string[],
     names: string[],
   ): Promise<ResolvedCallerRow[]> {
     if (declFiles.length === 0 || names.length === 0) return [];
-    return this.db
+    const rows = await this.db
       .select({
         fromPath: t.references.fromPath,
         toSymbol: t.references.toSymbol,
         line: t.references.line,
-        rank: t.fileRank.rank,
+        rank: sql<number>`coalesce(${t.fileRank.rank}, 0)`,
+        hasRank: sql<boolean>`${t.fileRank.rank} is not null`,
       })
       .from(t.references)
-      .innerJoin(
+      .leftJoin(
         t.fileRank,
         and(
           eq(t.fileRank.repoId, t.references.repoId),
@@ -528,6 +544,53 @@ export class RepoIntelRepository {
           inArray(t.references.toSymbol, names),
         ),
       );
+    return rows.map((r) => ({ ...r, rank: Number(r.rank) }));
+  }
+
+  /**
+   * Reverse import-graph BFS from `roots` (the changed files), up to `depth`
+   * hops, capped at `limit` rows — R4. Deliberately NOT `getEdges(repoId)`:
+   * that pulls every edge in the repo into memory. This is a targeted
+   * recursive CTE filtered on `repo_id` in both the seed and the recursive
+   * step, so it hits `file_edges_repo_to_idx (repo_id, to_file)`.
+   */
+  async getReverseDependents(
+    repoId: string,
+    roots: string[],
+    depth: number,
+    limit: number,
+  ): Promise<ReverseDependentRow[]> {
+    if (roots.length === 0) return [];
+    // NOTE: interpolating a plain JS array into a drizzle `sql` template binds
+    // it as a comma-separated PARAM LIST (IN-style), not a single array param
+    // — `unnest(${roots}::text[])` would try to cast a scalar text value to
+    // text[] and fail with "malformed array literal". Build an explicit
+    // ARRAY[...] constructor from individually-bound elements instead.
+    const rootsArray = sql`ARRAY[${sql.join(
+      roots.map((r) => sql`${r}`),
+      sql.raw(', '),
+    )}]::text[]`;
+    const rows = await this.db.execute<{ root_file: string; file: string; depth: number }>(sql`
+      WITH RECURSIVE dep(root_file, file, depth) AS (
+        SELECT r.root_file, r.root_file, 0
+        FROM unnest(${rootsArray}) AS r(root_file)
+        UNION
+        SELECT d.root_file, e.from_file, d.depth + 1
+        FROM file_edges e
+        JOIN dep d ON e.repo_id = ${repoId} AND e.to_file = d.file
+        WHERE d.depth < ${depth}
+      )
+      SELECT root_file, file, min(depth) AS depth
+      FROM dep
+      WHERE depth > 0
+      GROUP BY root_file, file
+      LIMIT ${limit}
+    `);
+    return [...rows].map((r) => ({
+      rootFile: r.root_file,
+      file: r.file,
+      depth: Number(r.depth),
+    }));
   }
 
   /** Per-file facts (endpoints/crons) for the given files. */

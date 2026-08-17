@@ -55,3 +55,39 @@ export const ConventionSummary = z.object({
   confidence: z.number().min(0).max(1).nullable(),
 });
 export type ConventionSummary = z.infer<typeof ConventionSummary>;
+
+/** Trimmed caller shape for get_blast_radius' output — max 5 per symbol
+ *  (`callers_total` on BlastSymbolSummary keeps the real count honest). */
+export const BlastCallerSummary = z.object({
+  file: z.string(),
+  line: z.number().int(),
+});
+export type BlastCallerSummary = z.infer<typeof BlastCallerSummary>;
+
+export const BlastSymbolSummary = z.object({
+  symbol: z.string(),
+  file: z.string(),
+  kind: z.string(),
+  callers: z.array(BlastCallerSummary),
+  callers_total: z.number().int(),
+  truncated: z.boolean(),
+});
+export type BlastSymbolSummary = z.infer<typeof BlastSymbolSummary>;
+
+/** Trimmed shape for get_blast_radius' output — a curated view over the
+ *  server's `BlastRadius`, not a passthrough of it (endpoints/crons are
+ *  flattened to their `value`; per-symbol attribution stays on `symbols`). */
+export const BlastRadiusSummary = z.object({
+  status: z.enum(['ok', 'partial', 'degraded']),
+  reason: z.string().nullable(),
+  message: z.string(),
+  symbols: z.array(BlastSymbolSummary),
+  endpoints: z.array(z.string()),
+  crons: z.array(z.string()),
+  coverage: z.object({
+    changed_files: z.array(z.string()),
+    analyzed_files: z.array(z.string()),
+    unsupported_files: z.array(z.string()),
+  }),
+});
+export type BlastRadiusSummary = z.infer<typeof BlastRadiusSummary>;

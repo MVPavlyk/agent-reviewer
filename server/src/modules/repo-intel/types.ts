@@ -29,7 +29,12 @@ export type DegradedReason =
   | 'index_failed'
   | 'index_partial'
   | 'repo_too_large'
-  | 'no_data';
+  | 'no_data'
+  | 'no_index'
+  | 'index_stale'
+  | 'rank_missing'
+  | 'unsupported_files'
+  | 'no_symbols';
 
 export interface IndexResult {
   status: IndexStatus;
@@ -71,6 +76,30 @@ export interface BlastCallerRow {
   rank: number;
 }
 
+/** An endpoint/cron reachable from a changed symbol, attributed with the path
+ *  that reached it — either a caller symbol (depth 0) or an import-graph hop
+ *  from the changed file itself (depth 1..BFS_DEPTH). */
+export interface BlastRef {
+  value: string;
+  file: string;
+  viaSymbol: string | null;
+  viaFile: string;
+  depth: number;
+}
+
+/** How much of the index the response actually drew on. */
+export interface BlastCoverage {
+  changedFiles: string[];
+  analyzedFiles: string[];
+  unsupportedFiles: string[];
+  filesWithoutRank: string[];
+  callersTruncated: boolean;
+  indexerVersion: number | null;
+  lastIndexedSha: string | null;
+}
+
+export type BlastStatus = 'ok' | 'partial' | 'degraded';
+
 export interface BlastResult {
   changedSymbols: BlastChangedSymbol[];
   callers: BlastCallerRow[];
@@ -84,6 +113,17 @@ export interface BlastResult {
   factsByFile?: Record<string, { endpoints: string[]; crons: string[] }>;
   degraded?: boolean;
   reason?: DegradedReason;
+  /** ok/partial/degraded — `degraded === (status === 'degraded')`. */
+  status: BlastStatus;
+  /** Human-readable explanation, non-empty whenever `status !== 'ok'`. */
+  message: string;
+  /** Attributed endpoints reachable from the changed symbols. */
+  endpoints: BlastRef[];
+  /** Attributed cron/job schedules reachable from the changed symbols. */
+  crons: BlastRef[];
+  coverage: BlastCoverage;
+  /** Callers, grouped + clamped per changed symbol (R2). */
+  callersBySymbol: Record<string, { rows: BlastCallerRow[]; total: number; truncated: boolean }>;
 }
 
 // ---------------------------------------------------------------------------
@@ -144,7 +184,11 @@ export interface RepoIntel {
   getIndexState(repoId: string): Promise<IndexState>;
 
   // --- Reads --------------------------------------------------------------
-  getBlastRadius(repoId: string, changedFiles: string[]): Promise<BlastResult>;
+  getBlastRadius(
+    repoId: string,
+    changedFiles: string[],
+    opts?: { source?: 'index' | 'best-effort' },
+  ): Promise<BlastResult>;
   getRepoMap(repoId: string, tokenBudget?: number): Promise<RepoMapResult>;
   getFileRank(repoId: string, paths: string[]): Promise<FileRankRow[]>;
   getSymbolsInFiles(repoId: string, paths: string[]): Promise<SymbolRow[]>;
