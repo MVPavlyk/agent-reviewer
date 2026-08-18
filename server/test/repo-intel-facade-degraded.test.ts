@@ -62,6 +62,25 @@ describe('RepoIntel facade — degraded contract (flag off)', () => {
     // reason is one of the documented DegradedReason values
     expect(['flag_off', 'no_data', 'index_failed', 'index_partial', 'repo_too_large'])
       .toContain(blast.reason);
+    // R2/R5/R6 — the new required fields are always present, never undefined.
+    expect(blast.status).toBe('degraded');
+    expect(typeof blast.message).toBe('string');
+    expect(Array.isArray(blast.endpoints)).toBe(true);
+    expect(Array.isArray(blast.crons)).toBe(true);
+    expect(blast.callersBySymbol).toEqual({});
+    expect(blast.coverage.changedFiles).toEqual(['a.ts']);
+    expect(Array.isArray(blast.coverage.analyzedFiles)).toBe(true);
+    expect(Array.isArray(blast.coverage.unsupportedFiles)).toBe(true);
+    expect(Array.isArray(blast.coverage.filesWithoutRank)).toBe(true);
+  });
+
+  it('getBlastRadius with source:"index" never falls back to the clone/ripgrep path (R12)', async () => {
+    const svc = buildDegradedService({ flag: false, basics: null });
+    const blast = await svc.getBlastRadius('r1', ['a.ts'], { source: 'index' });
+    expect(blast.status).toBe('degraded');
+    expect(blast.reason).toBe('flag_off');
+    expect(blast.changedSymbols).toEqual([]);
+    expect(blast.callers).toEqual([]);
   });
 
   it('getIndexState → degraded row (never throws) when no row exists', async () => {

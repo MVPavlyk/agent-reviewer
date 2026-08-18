@@ -75,12 +75,30 @@ describe('AI contracts parse fixtures', () => {
         downstream: [
           {
             symbol: 'rateLimit',
-            callers: [{ name: 'publicRouter', file: 'b.ts', line: 23 }],
-            endpoints_affected: ['GET /x'],
-            crons_affected: ['c'],
+            callers: [{ name: 'publicRouter', file: 'b.ts', line: 23, rank: 0.8 }],
+            callers_total: 1,
+            callers_truncated: false,
+            endpoints_affected: [
+              { value: 'GET /x', file: 'b.ts', via_symbol: 'publicRouter', via_file: 'a.ts', depth: 0 },
+            ],
+            crons_affected: [
+              { value: 'c', file: 'b.ts', via_symbol: null, via_file: 'a.ts', depth: 1 },
+            ],
           },
         ],
         summary: 's',
+        status: 'ok',
+        reason: null,
+        message: '',
+        coverage: {
+          changed_files: ['a.ts'],
+          analyzed_files: ['a.ts'],
+          unsupported_files: [],
+          files_without_rank: [],
+          indexer_version: 2,
+          last_indexed_sha: 'deadbeef',
+        },
+        head_sha: 'deadbeef',
       }),
     ).not.toThrow();
     expect(() =>

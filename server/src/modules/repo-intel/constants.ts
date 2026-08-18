@@ -50,6 +50,8 @@ export const INDEX_SOFT_BUDGET_MS = 110_000;
 
 // --- [T3] Graph / hotness / repo-map ---------------------------------------
 export const BFS_DEPTH = 2;
+/** Cap on rows returned by the blast reverse-dependents BFS (R4). */
+export const MAX_REVERSE_DEPENDENTS = 500;
 export const HOTNESS_WINDOW_DAYS = 180;
 export const DEFAULT_REPO_MAP_TOKEN_BUDGET = 1500;
 /** Signatures are trimmed to this many chars in the parse phase (cache stability). */

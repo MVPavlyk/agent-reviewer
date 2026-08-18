@@ -41,14 +41,58 @@ export const BlastCaller = z.object({
   name: z.string(),
   file: z.string(),
   line: z.number().int(),
+  rank: z.number(),
 });
 export type BlastCaller = z.infer<typeof BlastCaller>;
+
+/** An endpoint/cron reachable from a changed symbol — attributed with the
+ *  path that reached it (caller symbol, or import-graph hop). */
+export const BlastRef = z.object({
+  value: z.string(),
+  file: z.string(),
+  via_symbol: z.string().nullable(),
+  via_file: z.string(),
+  depth: z.number().int(),
+});
+export type BlastRef = z.infer<typeof BlastRef>;
+
+/** How much of the index the response actually drew on — lets the UI tell
+ *  "no impact" apart from "nothing analyzed". */
+export const BlastCoverage = z.object({
+  changed_files: z.array(z.string()),
+  analyzed_files: z.array(z.string()),
+  unsupported_files: z.array(z.string()),
+  files_without_rank: z.array(z.string()),
+  indexer_version: z.number().int().nullable(),
+  last_indexed_sha: z.string().nullable(),
+});
+export type BlastCoverage = z.infer<typeof BlastCoverage>;
+
+export const BlastStatus = z.enum(['ok', 'partial', 'degraded']);
+export type BlastStatus = z.infer<typeof BlastStatus>;
+
+export const BlastReason = z.enum([
+  'flag_off',
+  'no_index',
+  'index_stale',
+  'index_partial',
+  'index_failed',
+  'repo_too_large',
+  'rank_missing',
+  'unsupported_files',
+  'no_symbols',
+  'no_data',
+  'diff_not_loaded',
+]);
+export type BlastReason = z.infer<typeof BlastReason>;
 
 export const DownstreamImpact = z.object({
   symbol: z.string(),
   callers: z.array(BlastCaller),
-  endpoints_affected: z.array(z.string()),
-  crons_affected: z.array(z.string()),
+  callers_total: z.number().int(),
+  callers_truncated: z.boolean(),
+  endpoints_affected: z.array(BlastRef),
+  crons_affected: z.array(BlastRef),
 });
 export type DownstreamImpact = z.infer<typeof DownstreamImpact>;
 
@@ -56,6 +100,11 @@ export const BlastRadius = z.object({
   changed_symbols: z.array(ChangedSymbol),
   downstream: z.array(DownstreamImpact),
   summary: z.string(),
+  status: BlastStatus,
+  reason: BlastReason.nullable(),
+  message: z.string(),
+  coverage: BlastCoverage,
+  head_sha: z.string().nullable(),
 });
 export type BlastRadius = z.infer<typeof BlastRadius>;
 

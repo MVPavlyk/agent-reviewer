@@ -17,6 +17,7 @@ otherwise.
 | `client/` | `@devdigest/web` | Next.js 15 studio UI |
 | `reviewer-core/` | `@devdigest/reviewer-core` | pure engine: diff → prompt → LLM → findings |
 | `e2e/` | `@devdigest/e2e` | deterministic browser flows |
+| `mcp/` | `@devdigest/mcp` | MCP server: 5 tools over the DevDigest REST API |
 
 Each package has its own `CLAUDE.md`, loaded when you touch files there.
 Package-specific rules live there; this file holds only what spans packages.
@@ -25,7 +26,7 @@ Package-specific rules live there; this file holds only what spans packages.
 | Package | Manager | Lockfile |
 |---|---|---|
 | `server/`, `client/` | **pnpm** | `pnpm-lock.yaml` |
-| `reviewer-core/`, `e2e/` | **npm** | `package-lock.json` |
+| `reviewer-core/`, `e2e/`, `mcp/` | **npm** | `package-lock.json` |
 
 No `packageManager` field enforces this — CI does (`reviewer-core.yml` runs
 `npm ci`; server/client workflows run `pnpm install --frozen-lockfile`).

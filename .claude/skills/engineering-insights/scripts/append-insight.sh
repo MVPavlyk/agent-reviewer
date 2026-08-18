@@ -15,7 +15,7 @@
 #
 set -euo pipefail
 
-readonly PACKAGES=(client server reviewer-core e2e)
+readonly PACKAGES=(client server reviewer-core e2e mcp)
 
 die() { printf 'append-insight: %s\n' "$*" >&2; exit 1; }
 
