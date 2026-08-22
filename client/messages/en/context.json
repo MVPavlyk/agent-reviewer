@@ -20,5 +20,51 @@
     "loadError": "Couldn’t load spec",
     "save": "Save",
     "saving": "Saving…"
+  },
+  "docs": {
+    "crumb": "Project Context",
+    "title": "Project Context",
+    "refresh": "Refresh",
+    "usedByAgents": "{count, plural, one {# agent} other {# agents}}",
+    "footer": "{count, plural, one {# document} other {# documents}} · scanned {scannedAt}",
+    "truncated": "This preview was truncated — the full document is still sent to the model.",
+    "cloneMissing": {
+      "title": "Repository not cloned yet",
+      "body": "This repo has no local clone to scan for context documents. Sync it to pull one.",
+      "action": "Sync repository"
+    },
+    "error": {
+      "title": "Couldn’t load context documents"
+    },
+    "empty": {
+      "title": "No context documents found",
+      "body": "Searched under: {roots}"
+    },
+    "selectPrompt": {
+      "title": "Select a document",
+      "body": "Pick a document on the left to preview it."
+    }
+  },
+  "picker": {
+    "attachedCount": "{linked} of {total} attached",
+    "orderHint": "Order matters — earlier documents appear earlier in the assembled \"## Project context\" block, sent to the model as untrusted data.",
+    "filterPlaceholder": "Filter documents…",
+    "noMatches": "No documents match your filter.",
+    "nothingToAttach": "No more documents to attach.",
+    "attachSectionLabel": "Available documents",
+    "attachedToggle": "{path} attached",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "preview": "Preview {path}",
+    "previewLoading": "Loading preview…",
+    "tokensApprox": "≈ {count} tokens",
+    "tokensFooter": "≈ {count} tokens — sent as an untrusted block the model cannot follow as instructions.",
+    "tokensRepoCaveat": "(estimate for {repo}'s clone only)",
+    "missing": "missing",
+    "excludedReason": {
+      "too_large": "too large — excluded"
+    },
+    "inheritedVia": "via {skill}",
+    "multiRepoWarning": "This workspace has more than one repository. Attachments are stored as paths only, with no repo binding — at review time each one resolves against the clone of the PR's own repo, which may not be {repo}."
   }
 }

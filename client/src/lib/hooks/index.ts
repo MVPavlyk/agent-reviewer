@@ -71,3 +71,13 @@ export { useRepoIntelStatus, useResyncRepoIntel } from "./repo-intel";
 export type { RepoIntelState } from "./repo-intel";
 
 export { usePrBlast } from "./blast";
+
+export {
+  useContextDocs,
+  useRefreshContextDocs,
+  useContextDocContent,
+  useAgentContextDocs,
+  useSetAgentContextDocs,
+  useSkillContextDocs,
+  useSetSkillContextDocs,
+} from "./context-docs";

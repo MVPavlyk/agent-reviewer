@@ -29,6 +29,7 @@ import { PriceBook } from './price-book.js';
 import { ConfigError } from './errors.js';
 import { AgentsRepository } from '../modules/agents/repository.js';
 import { SkillsRepository } from '../modules/skills/repository.js';
+import { ContextDocsRepository } from '../modules/context-docs/repository.js';
 import { ConventionsRepository } from '../modules/conventions/repository.js';
 import { ReviewRepository } from '../modules/reviews/repository.js';
 import type { RepoIntel } from '../modules/repo-intel';
@@ -84,6 +85,7 @@ export class Container {
   // `container.agentsRepo` instead of reaching into another module's folder.
   private _agentsRepo?: AgentsRepository;
   private _skillsRepo?: SkillsRepository;
+  private _contextDocsRepo?: ContextDocsRepository;
   private _conventionsRepo?: ConventionsRepository;
   private _reviewRepo?: ReviewRepository;
   private _repoIntel?: RepoIntel;
@@ -117,6 +119,15 @@ export class Container {
    *  (see docs/specs/skills.md decision E6). */
   get skillsRepo(): SkillsRepository {
     return (this._skillsRepo ??= new SkillsRepository(this.db));
+  }
+
+  /** Two consumers now need context-docs data-access directly: `ReviewService`
+   *  (via `ReviewRunExecutor`) and `ContextDocsService` — resolve from the
+   *  composition root instead of each constructing its own
+   *  (server/INSIGHTS.md 2026-08-03: the same mistake already reversed once
+   *  for `skillsRepo`). */
+  get contextDocsRepo(): ContextDocsRepository {
+    return (this._contextDocsRepo ??= new ContextDocsRepository(this.db));
   }
 
   get conventionsRepo(): ConventionsRepository {

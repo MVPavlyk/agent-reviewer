@@ -14,6 +14,7 @@ export const TABS: readonly DetailTab[] = [
   { key: "preview", labelKey: "detail.tabs.preview", icon: "Eye" },
   { key: "stats", labelKey: "detail.tabs.stats", icon: "BarChart" },
   { key: "versions", labelKey: "detail.tabs.versions", icon: "History" },
+  { key: "context", labelKey: "detail.tabs.context", icon: "FileText" },
 ];
 
 export const DEFAULT_TAB = "config";
