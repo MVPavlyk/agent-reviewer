@@ -7,13 +7,17 @@ const REVIEW_PROMPT = `Audit this diff against DevDigest's documented structural
 
 ${fx("checkout-service.diff")}`;
 
-// A second real diff whose violations map onto DevDigest-SPECIFIC rule names
-// (`reviewer-core-zero-io`, `reviewer-core-ground-findings-gate`) that a competent model will
-// describe in prose but will not spontaneously name unless the agent forces a citation. This is
-// the discriminating case for the strict-vs-lite A/B: both variants should FIND both problems,
-// but only the strict variant (which keeps the "cite the exact documented rule per finding" hard
-// rule) should reliably emit the identifier. The checkout diff's textbook violations don't
-// discriminate — the model volunteers `inward-only-dependencies`/`di-discipline` either way.
+// A second real diff whose violations require tracing back to the DevDigest-specific rule
+// source (reviewer-core's zero-I/O rule and its mandatory groundFindings() gate, both documented
+// only in reviewer-core/CLAUDE.md, not something a generic reviewer would restate unprompted).
+// This is the discriminating case for the strict-vs-lite A/B: both variants should FIND both
+// problems, but only the strict variant (which keeps the "Яке правило порушено: path:line + quote"
+// field in its output template) should reliably cite WHERE each rule is documented. Note: the
+// agent has no machine-readable rule-identifier vocabulary anywhere in this repo (no slugs like
+// "reviewer-core-zero-io" are defined) — the real citation contract is a `path:line` reference
+// into the relevant CLAUDE.md/skill file plus a verbatim quote, which is what the practices below
+// check for. The checkout diff's textbook violations don't discriminate — the model cites its
+// source (server/CLAUDE.md) either way once it has found the violation.
 const REVIEWER_CORE_PROMPT = `Audit this diff against DevDigest's documented structural contracts.
 
 ${fx("reviewer-core-gate.diff")}`;
@@ -38,10 +42,10 @@ export const cases: AgentCase[] = [
     practices: [
       "flags the domain file (checkout.ts) importing a type from 'fastify' as a violation of the inward-only dependency rule between Domain and Presentation layers",
       "flags the `new PgCheckoutRepository()` call inside service.ts as a violation of DI discipline (concrete adapters/repositories must be constructed only in the composition root / container)",
-      "names the specific documented rule identifier for EVERY finding (e.g. `inward-only-dependencies`, `di-discipline`) rather than describing the problem only in prose",
+      "cites the specific documented rule for EVERY finding as a `path:line` reference into the relevant `CLAUDE.md` (or skill file) together with a verbatim quote of the rule text, rather than describing the problem only in prose",
       "assigns a severity (critical/high/medium/low/info) to each finding",
       "quotes the offending line verbatim as evidence for each finding, not a paraphrase",
-      "ends with an explicit PASS/FAIL gate verdict based on whether any critical or high findings exist",
+      "ends with an explicit verdict under a `## Вердикт` section using one of the agent's three defined outcomes (e.g. 'порушень не знайдено', 'є CRITICAL', 'лише WARNING/SUGGESTION') based on whether any critical or high findings exist",
     ],
     threshold: 1.0,
     maxTurns: 25,
@@ -58,16 +62,16 @@ export const cases: AgentCase[] = [
     maxTurns: 25,
   },
   {
-    name: "cites the DevDigest-specific rule identifier for reviewer-core violations",
+    name: "cites the specific documented rule source for reviewer-core violations",
     kind: "quality",
     prompt: REVIEWER_CORE_PROMPT,
     practices: [
       "flags the `import { readFileSync } from 'node:fs'` added to reviewer-core/src/pipeline/run.ts as a violation (reviewer-core must do no I/O except the injected LLMProvider)",
       "flags that runPipeline now returns `deduped` directly, skipping the mandatory `groundFindings()` gate before emitting findings",
-      "names the exact documented rule identifier `reviewer-core-zero-io` for the fs-import finding rather than only describing it in prose",
-      "names the exact documented rule identifier `reviewer-core-ground-findings-gate` for the skipped-gate finding rather than only describing it in prose",
+      "cites the specific `CLAUDE.md`/skill source (a `path:line` reference with a verbatim quote) documenting why reviewer-core must not perform fs I/O, for the fs-import finding, rather than only describing it in prose",
+      "cites the specific `CLAUDE.md`/skill source (a `path:line` reference with a verbatim quote) documenting the mandatory `groundFindings()` gate, for the skipped-gate finding, rather than only describing it in prose",
       "quotes the offending line verbatim as evidence for each finding, not a paraphrase",
-      "ends with an explicit PASS/FAIL gate verdict based on whether any critical or high findings exist",
+      "ends with an explicit verdict under a `## Вердикт` section using one of the agent's three defined outcomes (e.g. 'порушень не знайдено', 'є CRITICAL', 'лише WARNING/SUGGESTION') based on whether any critical or high findings exist",
     ],
     threshold: 1.0,
     maxTurns: 25,
