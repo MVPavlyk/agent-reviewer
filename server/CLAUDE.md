@@ -7,6 +7,7 @@ repo-intel, runs reviews through `reviewer-core`.
 | Trigger | Read |
 |---|---|
 | routes, DI, or pipeline wiring surprise you | [README.md](./README.md) — request/DI flow + API map |
+| adding or changing a REST endpoint | [docs/api-contracts.md](./docs/api-contracts.md) — route/schema/DI checklist |
 | touching the indexer | [src/modules/repo-intel/README.md](./src/modules/repo-intel/README.md) |
 | behaviour is non-obvious / mid-debug | [INSIGHTS.md](./INSIGHTS.md) |
 
