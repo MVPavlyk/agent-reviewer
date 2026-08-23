@@ -44,11 +44,11 @@ export const cases: SkillCase[] = [
     prompt: `Run a dependency check on this repo. I want the full report: graph, sizes, prioritized findings, recommendations.\n\n${REPO_DATA}`,
     grounding: ["```mermaid", "flowchart"],
     practices: [
-      "the report has a section named 'Scope' listing which packages (client, server, reviewer-core, e2e) were analyzed",
+      "the report has an 'Overview' (or equivalently named) section listing which packages (client, server, reviewer-core, e2e) were analyzed",
       "the report includes a Mermaid diagram (a fenced ```mermaid code block using flowchart) showing dependency relationships between packages",
       "the report has a section with a size breakdown table showing dependencies and their installed size, not just a vague size statement",
-      "the report has a 'Findings & Priorities' section (or equivalently named) that groups findings under explicit severity tiers such as P0, P1, P2, or Info — not an unranked bullet list",
-      "the report ends with a Summary section giving 3-5 concrete, actionable takeaways ordered by priority",
+      "the report has a 'Findings' section (or equivalently named) that groups findings under this skill's own CRITICAL / WARNING / SUGGESTION severity tiers — not an unranked bullet list and not a different tier scheme like P0/P1/P2",
+      "the report ends with a Recommendations (or equivalently named) section giving a short, ranked list of concrete, actionable takeaways ordered by priority",
       "every finding names a specific package, dependency, or file rather than giving generic advice like 'consider optimizing dependencies'",
     ],
     threshold: 0.7,
@@ -60,7 +60,7 @@ export const cases: SkillCase[] = [
     prompt: `This repo isn't a monorepo — server, client, reviewer-core, and e2e share code via TypeScript path aliases, not workspace:* packages. Analyze our dependencies, including how these packages depend on each other internally.\n\n${REPO_DATA}`,
     practices: [
       "the answer explicitly distinguishes internal cross-package dependencies (the @shared/review-types alias and the direct relative import into reviewer-core/src/pipeline.js) from external npm package dependencies, rather than treating them as the same kind of dependency",
-      "the answer flags server/src/services/review-service.ts importing reviewer-core/src/pipeline.js by relative path instead of through reviewer-core's public entry point as a P0-tier or otherwise explicitly called-out issue",
+      "the answer flags server/src/services/review-service.ts importing reviewer-core/src/pipeline.js by relative path instead of through reviewer-core's public entry point as a CRITICAL-tier or otherwise explicitly called-out issue",
       "the answer does not claim these packages are linked via workspace:* or pnpm workspaces, since the project explicitly is not a monorepo",
     ],
     threshold: 0.6,
@@ -71,7 +71,7 @@ export const cases: SkillCase[] = [
     kind: "quality",
     prompt: `We suspect some npm dependencies in server/ and client/ are unused or duplicated across packages with different versions. Check our dependencies and tell me what to prioritize fixing first.\n\n${REPO_DATA}`,
     practices: [
-      "findings are explicitly labeled with one of the defined severity tiers (P0, P1, P2, or Info) rather than left unranked",
+      "findings are explicitly labeled with one of this skill's defined severity tiers (CRITICAL, WARNING, or SUGGESTION) rather than left unranked",
       "the three different zod versions across server, client, and reviewer-core are called out explicitly as version drift",
       "moment being declared in server/package.json but never imported anywhere under server/src is called out explicitly as an unused dependency",
       "each recommendation names a specific package name and package.json/file location (e.g. server/package.json, moment, zod) rather than a generic suggestion",
