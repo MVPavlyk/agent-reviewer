@@ -64,6 +64,36 @@ the `description` for triggering accuracy against sibling skills already in
 skills and for edits that change scope or add a section, not just at
 creation time.
 
+A skill isn't done without matching evals under `evals/skills/<name>/`
+(`<name>.eval.ts`, `<name>.cases.ts`, `fixtures/`) — scaffold with
+`pnpm eval:scaffold <name>` from `evals/` (or, if that hits the pnpm
+build-approval prompt, run `./node_modules/.bin/tsx src/scaffold.ts <name>`
+directly) and write real `quality`-kind cases, not the TODO template. See
+`evals/README.md` and `evals/skills/dependency-checker/` for the pattern —
+match the cases' expectations to the skill's own vocabulary (e.g. this
+repo's CRITICAL/WARNING/SUGGESTION severity tiers), not a generic
+placeholder scheme.
+
+## Eval routing — what to run after touching what
+`evals/` (see its own `README.md` for the full three-tier design) is the
+source of truth for whether a skill, an agent, or a routing rule actually
+behaves as documented — not just that it reads well. Match the change to the
+**minimum** check below before calling the change done; a deeper eval never
+hurts, but skipping the minimum for the row that applies is how a stale
+case/routing rule survives unnoticed (see `evals/skills/dependency-checker/`
+and `evals/agents/architecture-reviewer-lite/` for two examples already
+caught this way).
+
+| Change | Minimum check |
+|---|---|
+| `.claude/skills/**` | `pnpm eval:quality <name>` (static gate, no model) **and** that skill's `evals/skills/<name>/<name>.eval.ts` |
+| `.claude/agents/**` | that agent's `evals/agents/<name>/<name>.eval.ts` **and**, if the change could affect *when* the agent gets invoked (description, dispatch conditions), the relevant case in `evals/workflow/*.eval.ts` |
+| `CLAUDE.md` / a package's `CLAUDE.md` / any "Read when" routing table | `pnpm eval:workflow` — routing is a systemic (workflow-tier) behavior, not something a content-only skill/agent eval can see |
+| An eval case (`*.cases.ts`) or the grader/scoring logic (`evals/src/scoring/*`) | re-run and re-save the baseline it will be compared against (`pnpm eval:repeat <pattern> -n N --label baseline`) — an old baseline compared against a changed grader is not a valid delta |
+
+Run commands from `evals/`, using the Node/pnpm path in "No system Node in
+the agent shell" below.
+
 ## Session protocol — INSIGHTS.md
 Every package has an append-only `INSIGHTS.md` next to its `CLAUDE.md`.
 
