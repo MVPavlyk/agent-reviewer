@@ -145,7 +145,7 @@ export const Repo = z.object({
   full_name: z.string(),
   default_branch: z.string(),
   clone_path: z.string().nullable(),
-  last_polled_at: z.string().nullable(),
+  last_synced_at: z.string().nullable(),
   created_by: z.string().nullable(),
 });
 export type Repo = z.infer<typeof Repo>;

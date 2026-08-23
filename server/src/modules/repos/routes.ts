@@ -1,6 +1,8 @@
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
+import { eq } from 'drizzle-orm';
 import { RepoInput } from '@devdigest/shared';
+import * as dbSchema from '../../db/schema.js';
 import { getContext } from '../_shared/context.js';
 import { IdParams } from '../_shared/schemas.js';
 import { RepoService } from './service.js';
@@ -38,6 +40,16 @@ export default async function reposRoutes(appBase: FastifyInstance) {
   app.post('/repos/:id/refresh', { schema: { params: IdParams } }, async (req) => {
     const { workspaceId } = await getContext(app.container, req);
     return service.refresh(workspaceId, req.params.id);
+  });
+
+  // Quick read for the sync badge — goes straight to the table, no repository
+  // round-trip, so the response stays a single query.
+  app.get('/repos/:id/sync-state', { schema: { params: IdParams } }, async (req) => {
+    const rows = await app.container.db
+      .select({ lastPolledAt: dbSchema.repos.lastPolledAt })
+      .from(dbSchema.repos)
+      .where(eq(dbSchema.repos.id, req.params.id));
+    return { last_synced_at: rows[0]?.lastPolledAt?.toISOString() ?? null };
   });
 
   app.delete('/repos/:id', { schema: { params: IdParams } }, async (req) => {
