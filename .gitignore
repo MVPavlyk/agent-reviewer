@@ -25,3 +25,6 @@ test-results/
 
 # emdash worktree config (local)
 .emdash.json
+
+# skill-creator eval run output (ephemeral — regenerated per run, not the test suite itself)
+.claude/skills/*-workspace/
