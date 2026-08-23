@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
+import { z } from 'zod';
 import { RunRequest } from '@devdigest/shared';
 import type { RunEvent } from '@devdigest/shared';
 import { getContext } from '../_shared/context.js';
@@ -16,8 +17,22 @@ import { ReviewService } from './service.js';
  *   POST   /findings/:id/(accept|dismiss)              → finding actions
  *   GET    /pulls/:id/intent                            → PrIntentRecord | 404 (not yet classified)
  *   POST   /pulls/:id/intent                            → (re-)classify intent; returns PrIntentRecord
+ *   GET    /pulls/:id/brief                              → PrBriefRecord | 404 (not yet generated)
+ *   POST   /pulls/:id/brief  {force?}                    → (re-)generate brief; returns PrBriefRecord
  */
 const FINDING_ACTIONS = ['accept', 'dismiss'] as const;
+
+/**
+ * Empty POST body from the client's "Generate" CTA must be valid. A
+ * body-less `inject`/fetch request arrives here as `null` (not `undefined`)
+ * — `z.object(...).default({})` only substitutes on `undefined`, so it
+ * silently still 422s a `null` body. `preprocess` normalizes both to `{}`
+ * before the object schema ever sees them.
+ */
+const BriefRequest = z.preprocess(
+  (v) => v ?? {},
+  z.object({ force: z.boolean().optional() }),
+);
 export default async function reviewsRoutes(appBase: FastifyInstance) {
   const app = appBase.withTypeProvider<ZodTypeProvider>();
   const { container } = app;
@@ -158,6 +173,26 @@ export default async function reviewsRoutes(appBase: FastifyInstance) {
     async (req) => {
       const { workspaceId } = await getContext(container, req);
       return service.classifyIntent(workspaceId, req.params.id, req.log);
+    },
+  );
+
+  // ---- PR Brief -------------------------------------------------------------
+  app.get('/pulls/:id/brief', { schema: { params: IdParams } }, async (req) => {
+    const { workspaceId } = await getContext(container, req);
+    const brief = await service.getBrief(workspaceId, req.params.id);
+    if (!brief) throw new NotFoundError('Brief not yet generated for this pull request');
+    return brief;
+  });
+
+  // (Re-)generate the brief. Same rate-limit shape as /pulls/:id/intent —
+  // each call can be up to two LLM calls (Intent + BriefCore) but stays
+  // synchronous, not queued.
+  app.post(
+    '/pulls/:id/brief',
+    { schema: { params: IdParams, body: BriefRequest }, config: { rateLimit: { max: 5, timeWindow: '1 minute' } } },
+    async (req) => {
+      const { workspaceId } = await getContext(container, req);
+      return service.generateBrief(workspaceId, req.params.id, req.body.force ?? false, req.log);
     },
   );
 

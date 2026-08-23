@@ -146,6 +146,33 @@ export const PrHistory = z.object({
 });
 export type PrHistory = z.infer<typeof PrHistory>;
 
+// ---- Brief Core (PR Brief LLM output) ----
+/** Overall merge-risk verdict — a distinct axis from `Risk.severity` (a
+ *  single risk's own severity); one PR-level `risk_level` summarizes all
+ *  `risks[]` for the "how risky is this, at a glance" read (SPEC-03 OQ-1). */
+export const RiskLevel = z.enum(['low', 'medium', 'high']);
+export type RiskLevel = z.infer<typeof RiskLevel>;
+
+/** A file/line the model wants a reviewer to look at first, with why. */
+export const ReviewFocusItem = z.object({
+  file: z.string(),
+  line: z.number().int().nullable(),
+  reason: z.string(),
+});
+export type ReviewFocusItem = z.infer<typeof ReviewFocusItem>;
+
+/** The structured output of the single `risk_brief` LLM call
+ *  (`completeStructured<BriefCore>`, schemaName `'BriefCore'`). Grounded
+ *  in-process afterward (`brief/grounding.ts`) before it's ever persisted. */
+export const BriefCore = z.object({
+  what: z.string(),
+  why: z.string(),
+  risk_level: RiskLevel,
+  risks: z.array(Risk),
+  review_focus: z.array(ReviewFocusItem),
+});
+export type BriefCore = z.infer<typeof BriefCore>;
+
 // ---- Smart Diff ----
 export const SmartDiffRole = z.enum(['core', 'wiring', 'boilerplate']);
 export type SmartDiffRole = z.infer<typeof SmartDiffRole>;
@@ -182,10 +209,16 @@ export const SmartDiff = z.object({
 export type SmartDiff = z.infer<typeof SmartDiff>;
 
 // ---- Composed PR Brief (pr_brief.json) ----
-export const PrBrief = z.object({
+/**
+ * `PrBrief` is now `BriefCore` (the LLM's own risk assessment) plus the
+ * Intent + BlastRadius it was grounded against. `risks` is flat `Risk[]`
+ * (via `BriefCore`), not the old `Risks` wrapper object — SPEC-03 §1a AC-12
+ * confirms no consumer existed before this change (grepped server/+client/,
+ * incl. test/). `history` stays optional: no producer exists yet (SPEC-03 N-3).
+ */
+export const PrBrief = BriefCore.extend({
   intent: Intent,
   blast: BlastRadius,
-  risks: Risks,
-  history: PrHistory,
+  history: PrHistory.optional(),
 });
 export type PrBrief = z.infer<typeof PrBrief>;

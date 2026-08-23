@@ -72,6 +72,8 @@ export type { RepoIntelState } from "./repo-intel";
 
 export { usePrBlast } from "./blast";
 
+export { usePrBrief, useGenerateBrief } from "./brief";
+
 export {
   useContextDocs,
   useRefreshContextDocs,

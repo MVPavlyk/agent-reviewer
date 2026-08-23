@@ -1,7 +1,15 @@
 import { and, eq } from 'drizzle-orm';
 import type { Db } from '../../../db/client.js';
 import * as t from '../../../db/schema.js';
-import type { Intent, IntentConfidence, IntentSource, PrIntentRecord } from '@devdigest/shared';
+import type {
+  Intent,
+  IntentConfidence,
+  IntentSource,
+  PrBrief,
+  PrBriefRecord,
+  PrIntentRecord,
+} from '@devdigest/shared';
+import { PrBrief as PrBriefSchema } from '@devdigest/shared';
 import type { PullRow } from '../../../db/rows.js';
 
 // ---- PR lookup (workspace-scoped) -----------------------------------------
@@ -88,6 +96,47 @@ export async function getIntent(db: Db, prId: string): Promise<PrIntentRecord | 
     confidence: row.confidence as IntentConfidence,
     sources: row.sources as IntentSource[],
     missing_context: row.missingContext,
+    provider: row.provider,
+    model: row.model,
+    generated_at: row.generatedAt.toISOString(),
+    source_updated_at: row.sourceUpdatedAt ? row.sourceUpdatedAt.toISOString() : null,
+  };
+}
+
+// ---- brief ------------------------------------------------------------
+
+export interface UpsertBriefInput {
+  brief: PrBrief;
+  provider: string;
+  model: string;
+  /** Snapshot of `pull_requests.updated_at` at generation time. */
+  sourceUpdatedAt: Date | null;
+}
+
+export async function upsertBrief(db: Db, prId: string, input: UpsertBriefInput): Promise<void> {
+  const values = {
+    prId,
+    json: input.brief,
+    provider: input.provider,
+    model: input.model,
+    generatedAt: new Date(),
+    sourceUpdatedAt: input.sourceUpdatedAt,
+  };
+  await db
+    .insert(t.prBrief)
+    .values(values)
+    .onConflictDoUpdate({ target: t.prBrief.prId, set: values });
+}
+
+export async function getBrief(db: Db, prId: string): Promise<PrBriefRecord | undefined> {
+  const [row] = await db.select().from(t.prBrief).where(eq(t.prBrief.prId, prId));
+  if (!row) return undefined;
+  // `json` is a jsonb blob — never trust it blindly; parse it back through the
+  // validated schema before it's ever handed to a caller (drizzle-orm-patterns).
+  const brief = PrBriefSchema.parse(row.json);
+  return {
+    ...brief,
+    pr_id: prId,
     provider: row.provider,
     model: row.model,
     generated_at: row.generatedAt.toISOString(),

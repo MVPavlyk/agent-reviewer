@@ -12,6 +12,7 @@ import { AppShell } from "@/components/app-shell";
 import { RepoNotFound } from "@/components/repo-not-found";
 import { PrDetailHeader } from "./_components/PrDetailHeader";
 import { IntentCard } from "./_components/IntentCard";
+import { PrBriefCard } from "./_components/PrBriefCard";
 import { OverviewTab } from "./_components/OverviewTab";
 import { FindingsTab } from "./_components/FindingsTab";
 import { DiffTab } from "./_components/DiffTab";
@@ -142,6 +143,12 @@ export default function PRDetailPage() {
       <div style={{ padding: "24px 32px 44px", display: "flex", flexDirection: "column", gap: 24, maxWidth: 1080, margin: "0 auto" }}>
         {tab === "overview" && (
           <>
+            <PrBriefCard
+              prId={prId}
+              prUpdatedAt={pr.updated_at}
+              repoFullName={repoFullName}
+              headSha={pr.head_sha}
+            />
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
               <IntentCard prId={prId} prUpdatedAt={pr.updated_at} />
               <BlastRadiusCard prId={prId} repoFullName={repoFullName} />

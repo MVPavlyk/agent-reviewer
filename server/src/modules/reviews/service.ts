@@ -1,5 +1,5 @@
 import type { Container } from '../../platform/container.js';
-import type { FindingActionKind, PrIntentRecord, RunEventKind, RunTrace } from '@devdigest/shared';
+import type { FindingActionKind, PrBriefRecord, PrIntentRecord, RunEventKind, RunTrace } from '@devdigest/shared';
 import { AppError, NotFoundError } from '../../platform/errors.js';
 import type { AgentRow } from '../../db/rows.js';
 import { ReviewRepository } from './repository.js';
@@ -9,6 +9,7 @@ import { actOnFinding as actOnFindingImpl } from './findings.js';
 import { reviewToDto } from './helpers.js';
 import { loadDiff } from './diff-loader.js';
 import { classifyAndStoreIntent } from './intent/service.js';
+import { generateAndStoreBrief } from './brief/service.js';
 
 // Re-export DTO types + converters for backward-compatible imports from
 // './service.js' (these previously lived here; logic now in ./helpers.ts).
@@ -209,5 +210,31 @@ export class ReviewService {
     if (!repo) throw new NotFoundError('Repo not found');
     const diff = await loadDiff(this.container, this.repo, workspaceId, pull, repo);
     return classifyAndStoreIntent(this.container, this.repo, workspaceId, pull, repo, diff, logger);
+  }
+
+  // ===========================================================================
+  // PR Brief — GET/POST /pulls/:id/brief
+  // ===========================================================================
+
+  /** The persisted brief for a PR, or `undefined` if never generated. Never
+   *  calls the LLM (AC-26). */
+  async getBrief(workspaceId: string, prId: string): Promise<PrBriefRecord | undefined> {
+    const pull = await this.repo.getPull(workspaceId, prId);
+    if (!pull) throw new NotFoundError('Pull request not found');
+    return this.repo.getBrief(prId);
+  }
+
+  /**
+   * (Re-)generate the PR Brief: `generateAndStoreBrief` (see `brief/service.ts`
+   * for the full pipeline) — reuses the cached brief with zero LLM calls
+   * unless `force` or the PR moved on since the cached `source_updated_at`.
+   */
+  async generateBrief(
+    workspaceId: string,
+    prId: string,
+    force: boolean,
+    logger?: Logger,
+  ): Promise<PrBriefRecord> {
+    return generateAndStoreBrief(this.container, this.repo, workspaceId, prId, { force }, logger);
   }
 }

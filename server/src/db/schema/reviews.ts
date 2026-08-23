@@ -1,7 +1,7 @@
 import { sql } from 'drizzle-orm';
 import { pgTable, uuid, text, integer, jsonb, timestamp, doublePrecision, index } from 'drizzle-orm/pg-core';
-import { now } from './_shared.js';
-import { workspaces } from './core.js';
+import { now } from './_shared';
+import { workspaces } from './core';
 import { pullRequests } from './pulls';
 
 // ============================================================ Review & findings
@@ -93,4 +93,10 @@ export const prBrief = pgTable('pr_brief', {
     .primaryKey()
     .references(() => pullRequests.id, { onDelete: 'cascade' }),
   json: jsonb('json').notNull(),
+  provider: text('provider').notNull(),
+  model: text('model').notNull(),
+  generatedAt: timestamp('generated_at', { withTimezone: true }).notNull().defaultNow(),
+  /** Snapshot of `pull_requests.updated_at` at generation time — lets the
+   *  UI detect the PR moved on since this brief was generated. */
+  sourceUpdatedAt: timestamp('source_updated_at', { withTimezone: true }),
 });

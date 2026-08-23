@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { Finding, Verdict } from './findings.js';
-import { Intent, IntentConfidence, IntentSource, SmartDiff } from './brief.js';
+import { Intent, IntentConfidence, IntentSource, PrBrief, SmartDiff } from './brief.js';
 
 /**
  * A2 — Review-Core API surface contracts. These extend the core
@@ -74,6 +74,18 @@ export const PrIntentRecord = Intent.extend({
   source_updated_at: z.string().nullable(),
 });
 export type PrIntentRecord = z.infer<typeof PrIntentRecord>;
+
+/** PR Brief persisted for a PR — the UI-only subset `PrBriefCard` reads. */
+export const PrBriefRecord = PrBrief.extend({
+  pr_id: z.string(),
+  provider: z.string(),
+  model: z.string(),
+  generated_at: z.string(),
+  /** Snapshot of `pull_requests.updated_at` at generation time — lets the
+   *  UI detect the PR moved on since this brief was generated. */
+  source_updated_at: z.string().nullable(),
+});
+export type PrBriefRecord = z.infer<typeof PrBriefRecord>;
 
 /** Smart-diff response for a PR (the SmartDiff). */
 export const SmartDiffResponse = SmartDiff;
