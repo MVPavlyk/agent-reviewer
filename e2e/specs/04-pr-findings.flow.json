@@ -1,7 +1,7 @@
 {
   "$schema": "./flow.schema.json",
   "name": "PR detail shows the seeded review run, verdict, and findings",
-  "description": "From PR #482, open the Agent runs tab and confirm the seeded review run renders (verdict 'request changes', 2 findings) in its accordion header. The newest run's accordion is open by default (FindingsTab passes defaultOpen to the first run), so the VerdictBanner and the seeded FindingCard ('Hardcoded Stripe secret key in commit') are revealed without an extra click. Then exercises the severity-counter row above 'Review runs': clicking CRITICAL sets ?sev=CRITICAL and the seeded CRITICAL finding stays visible. Exercises the refactored ReviewRunAccordion / VerdictBanner / FindingsPanel / FindingCard / SeverityCounts. Read-only seeded data (no model call). Assumes a freshly-seeded DB where acme/payments-api (PR #482) is the first repo \u2014 guaranteed by e2e-web.yml; run locally via the hermetic stack (see e2e/README.md). Only asserts the URL param + the still-visible CRITICAL finding \u2014 agent-browser's documented locators (--url/--text/find) have no negative-assertion primitive, so it doesn't try to prove the WARNING finding disappeared (covered instead by the FindingsPanel unit test's severity-filter case).",
+  "description": "From PR #482, open the Agent runs tab and confirm the seeded review run renders (verdict 'request changes', 11 findings) in its accordion header. The newest run's accordion is open by default (FindingsTab passes defaultOpen to the first run), so the VerdictBanner and the seeded FindingCard ('Hardcoded Stripe secret key in commit') are revealed without an extra click. Then exercises the severity-counter row above 'Review runs': clicking CRITICAL sets ?sev=CRITICAL and the seeded CRITICAL finding stays visible. Exercises the refactored ReviewRunAccordion / VerdictBanner / FindingsPanel / FindingCard / SeverityCounts. Read-only seeded data (no model call). Assumes a freshly-seeded DB where acme/payments-api (PR #482) is the first repo \u2014 guaranteed by e2e-web.yml; run locally via the hermetic stack (see e2e/README.md). Only asserts the URL param + the still-visible CRITICAL finding \u2014 agent-browser's documented locators (--url/--text/find) have no negative-assertion primitive, so it doesn't try to prove the WARNING finding disappeared (covered instead by the FindingsPanel unit test's severity-filter case).",
   "steps": [
     {
       "cmd": [
@@ -74,7 +74,7 @@
       "cmd": [
         "wait",
         "--text",
-        "2 findings"
+        "11 findings"
       ],
       "label": "accordion header shows the seeded finding count"
     },
