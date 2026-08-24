@@ -16,6 +16,9 @@ import {
   Repo,
   PrDetail,
   PrBriefRecord,
+  EvalBatchRecord,
+  EvalCaseRecord,
+  EvalCompare,
 } from '@devdigest/shared';
 
 /**
@@ -228,6 +231,58 @@ describe('AI contracts parse fixtures', () => {
       log: [{ t: '00.00', kind: 'info', msg: 'started' }],
     });
     expect(trace.tool_calls).toHaveLength(1);
+  });
+
+  it('EvalBatchRecord (L06 eval pipeline) — null-metrics batch parses', () => {
+    const batch = {
+      id: 'b1',
+      agent_id: 'a1',
+      agent_version: 3,
+      system_prompt_snapshot: 'You are a reviewer.',
+      system_prompt_hash: 'sha256:abc123',
+      model: 'deepseek/deepseek-v4-flash',
+      provider: 'openrouter',
+      skill_slugs: null,
+      case_ids: ['c1', 'c2'],
+      status: 'running',
+      recall: null,
+      precision: null,
+      citation_accuracy: null,
+      cost_usd: null,
+      traces_passed: null,
+      traces_total: 2,
+      duration_ms: null,
+      label: null,
+      error: null,
+      started_at: '2026-08-20T12:00:00Z',
+      finished_at: null,
+    };
+    expect(() => EvalBatchRecord.parse(batch)).not.toThrow();
+
+    const caseRecord = {
+      id: 'c1',
+      owner_kind: 'agent',
+      owner_id: 'a1',
+      name: 'n-plus-one-query',
+      input_diff: '@@ -1,1 +1,1 @@\n-a\n+b\n',
+      input_meta: { source_finding: { finding_id: 'f1' } },
+      expected_output: [],
+      notes: null,
+      last_run: null,
+    };
+    expect(() => EvalCaseRecord.parse(caseRecord)).not.toThrow();
+
+    const succeeded = { ...batch, status: 'succeeded', recall: 0.8, precision: 1, citation_accuracy: 1, cost_usd: 0.02, traces_passed: 2, duration_ms: 4000, finished_at: '2026-08-20T12:01:00Z' };
+    expect(() =>
+      EvalCompare.parse({
+        batch_a: batch,
+        batch_b: succeeded,
+        cases: [
+          { case_id: 'c1', case_name: 'n-plus-one-query', in_a: true, in_b: true, pass_a: null, pass_b: true },
+          { case_id: 'c2', case_name: 'secret-key', in_a: false, in_b: true, pass_a: null, pass_b: true },
+        ],
+      }),
+    ).not.toThrow();
   });
 });
 

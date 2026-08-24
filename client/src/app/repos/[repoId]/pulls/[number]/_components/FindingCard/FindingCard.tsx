@@ -18,8 +18,10 @@ import {
   type Category,
 } from "@devdigest/ui";
 import type { FindingRecord, FindingActionKind } from "@devdigest/shared";
+import { useCreateEvalCaseFromFinding } from "@/lib/hooks";
+import { useToast } from "@/lib/toast";
 import { SEV_COLOR, SEV_COLOR_FALLBACK } from "./constants";
-import { lineLabel } from "./helpers";
+import { lineLabel, isEligibleForEvalCase, isFindingResolved } from "./helpers";
 import { githubBlobUrl } from "../../../../../../../lib/github-urls";
 import { s } from "./styles";
 
@@ -31,6 +33,7 @@ export function FindingCard({
   pending,
   repoFullName,
   headSha,
+  reviewAgentId,
 }: {
   f: FindingRecord;
   focused?: boolean;
@@ -39,6 +42,10 @@ export function FindingCard({
   pending?: boolean;
   repoFullName?: string | null;
   headSha?: string | null;
+  /** The review run's agent (`ReviewRecord.agent_id`) — `FindingRecord` has no
+   *  agent of its own, so it's threaded down from ReviewRunAccordion via
+   *  FindingsPanel. `null` disables "Turn into eval case" (AC-16). */
+  reviewAgentId?: string | null;
 }) {
   const t = useTranslations("prReview");
   const [expanded, setExpanded] = React.useState(defaultExpanded ?? false);
@@ -50,6 +57,30 @@ export function FindingCard({
   const accepted = !!f.accepted_at;
   const dismissed = !!f.dismissed_at;
   const muted = accepted || dismissed;
+
+  // ---- "Turn into eval case" (L-06) ----
+  const createEvalCase = useCreateEvalCaseFromFinding();
+  const toast = useToast();
+  const [evalCaseId, setEvalCaseId] = React.useState<string | null>(null);
+  const [showUnresolvedHint, setShowUnresolvedHint] = React.useState(false);
+  const evalCaseEligible = isEligibleForEvalCase(f);
+  const evalCaseResolved = isFindingResolved(f);
+
+  function handleTurnIntoEvalCase() {
+    if (!evalCaseResolved) {
+      setShowUnresolvedHint(true);
+      return;
+    }
+    if (reviewAgentId == null) return;
+    setShowUnresolvedHint(false);
+    createEvalCase.mutateAsync(f.id).then((res) => {
+      setEvalCaseId(res.case_id);
+      toast.success(t("finding.evalCase.toastSuccess"), {
+        label: t("finding.evalCase.openInEvals"),
+        href: `/agents/${reviewAgentId}?tab=evals`,
+      });
+    });
+  }
 
   return (
     <div data-finding-id={f.id} style={s.card(!!focused, sevColor, muted)}>
@@ -109,7 +140,26 @@ export function FindingCard({
             >
               {t("finding.dismiss")}
             </Button>
+            {evalCaseEligible && (
+              <Button
+                kind="ghost"
+                size="sm"
+                icon="FlaskConical"
+                disabled={reviewAgentId == null || createEvalCase.isPending}
+                aria-label={t("finding.evalCase.button")}
+                title={reviewAgentId == null ? t("finding.evalCase.disabledHint") : undefined}
+                onClick={handleTurnIntoEvalCase}
+              >
+                {t("finding.evalCase.button")}
+              </Button>
+            )}
           </div>
+          {showUnresolvedHint && <div style={s.evalCaseHint}>{t("finding.evalCase.unresolvedHint")}</div>}
+          {evalCaseId && (
+            <div style={s.evalCaseHint}>
+              <a href={`/agents/${reviewAgentId}?tab=evals`}>{t("finding.evalCase.created")}</a>
+            </div>
+          )}
         </div>
       )}
     </div>

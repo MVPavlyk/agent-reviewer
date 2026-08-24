@@ -89,6 +89,85 @@ export const EvalDashboard = z.object({
 export type EvalDashboard = z.infer<typeof EvalDashboard>;
 
 // ===========================================================================
+// Eval batches (L-06 eval pipeline) — "run all evals" for an agent, one row
+// per click. Mirrors `eval_run_batches`; aggregates are pre-computed at
+// executor time (NFR-1) — the API never recomputes metrics on the fly.
+// ===========================================================================
+
+export const EvalBatchStatus = z.enum(['running', 'succeeded', 'partial', 'failed']);
+export type EvalBatchStatus = z.infer<typeof EvalBatchStatus>;
+
+/** A persisted eval run batch (mirrors `eval_run_batches`), returned by the API. */
+export const EvalBatchRecord = z.object({
+  id: z.string(),
+  agent_id: z.string(),
+  agent_version: z.number().int(),
+  system_prompt_snapshot: z.string(),
+  system_prompt_hash: z.string(),
+  model: z.string(),
+  provider: z.string(),
+  skill_slugs: z.array(z.string()).nullable(),
+  case_ids: z.array(z.string()),
+  status: EvalBatchStatus,
+  recall: z.number().nullable(),
+  precision: z.number().nullable(),
+  citation_accuracy: z.number().nullable(),
+  cost_usd: z.number().nullable(),
+  traces_passed: z.number().int().nullable(),
+  traces_total: z.number().int().nullable(),
+  duration_ms: z.number().int().nullable(),
+  label: z.string().nullable(),
+  error: z.string().nullable(),
+  started_at: z.string(),
+  finished_at: z.string().nullable(),
+});
+export type EvalBatchRecord = z.infer<typeof EvalBatchRecord>;
+
+/** An eval case plus the status of its most recent run — read model for the UI. */
+export const EvalCaseRecord = z.object({
+  id: z.string(),
+  owner_kind: EvalOwnerKind,
+  owner_id: z.string(),
+  name: z.string(),
+  input_diff: z.string(),
+  input_meta: z.unknown(),
+  expected_output: z.unknown(),
+  notes: z.string().nullish(),
+  last_run: z
+    .object({
+      run_id: z.string(),
+      batch_id: z.string().nullable(),
+      pass: z.boolean().nullable(),
+      ran_at: z.string(),
+    })
+    .nullable(),
+});
+export type EvalCaseRecord = z.infer<typeof EvalCaseRecord>;
+
+/**
+ * Per-case comparison row for `GET /eval-runs/compare`. The server only
+ * reports presence + pass per batch — classifying transitions (regression,
+ * "only in A/B", error) is UI logic (Крок 18), not computed here.
+ */
+export const EvalCompareCase = z.object({
+  case_id: z.string(),
+  case_name: z.string(),
+  in_a: z.boolean(),
+  in_b: z.boolean(),
+  pass_a: z.boolean().nullable(),
+  pass_b: z.boolean().nullable(),
+});
+export type EvalCompareCase = z.infer<typeof EvalCompareCase>;
+
+/** Response of `GET /eval-runs/compare?a=&b=` — both batch snapshots + per-case rows. */
+export const EvalCompare = z.object({
+  batch_a: EvalBatchRecord,
+  batch_b: EvalBatchRecord,
+  cases: z.array(EvalCompareCase),
+});
+export type EvalCompare = z.infer<typeof EvalCompare>;
+
+// ===========================================================================
 // Compose Review
 // ===========================================================================
 

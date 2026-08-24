@@ -9,6 +9,7 @@
     "metricTrend": "Metric trend",
     "recentRuns": "Recent runs",
     "noRuns": "No runs yet. Create an eval case and run it.",
+    "disabled": "disabled",
     "metrics": {
       "recall": "RECALL",
       "precision": "PRECISION",
@@ -72,6 +73,31 @@
     "running": "Running…",
     "edit": "Edit",
     "delete": "Delete"
+  },
+  "agentEval": {
+    "compare": "Compare",
+    "table": {
+      "version": "Version",
+      "selectRun": "Select run from {date}"
+    }
+  },
+  "compare": {
+    "title": "Compare",
+    "subtitle": "{versionA} vs {versionB}",
+    "metrics": "Metrics",
+    "changedSummary": "Changed {n} of {y} cases",
+    "casesTitle": "Cases",
+    "table": {
+      "case": "Case"
+    },
+    "verdict": {
+      "pass": "pass",
+      "fail": "fail",
+      "error": "error"
+    },
+    "onlyIn": "only in {version}",
+    "promptDiff": "System prompt diff",
+    "error": "Failed to load comparison."
   },
   "page": {
     "crumbSkillsLab": "Skills Lab",

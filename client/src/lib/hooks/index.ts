@@ -83,3 +83,14 @@ export {
   useSkillContextDocs,
   useSetSkillContextDocs,
 } from "./context-docs";
+
+export {
+  useAgentEvalCases,
+  useAgentEvalBatches,
+  useEvalBatch,
+  useEvalCompare,
+  useEvalDashboard,
+  useRunAgentEvals,
+  useCreateEvalCaseFromFinding,
+} from "./evals";
+export type { EvalDashboardAgentRow, EvalBatchPoll, StartBatchResult } from "./evals";

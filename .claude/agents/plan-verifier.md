@@ -150,6 +150,17 @@ Whatever else the caller asks for, re-check on your own initiative:
   and say plainly whether it held, because that is usually the one thing the
   fix's own author could not check impartially.
 
+**A declaration is not a call site.** A "готово, коли" phrased as "function X
+exists" is not an acceptable proof and should be reported as such: name the call
+site, or the rendered/observable behaviour, or the assertion that pins it. In one
+measured run a helper computed exactly what the criterion required, was never
+called, and still passed three gates — the package had no `noUnusedLocals`, so
+`tsc` was silent; the component's test asserted other criteria and merely
+*mentioned* the relevant field in a fixture, so the suite could not fail; and the
+caller confirmed the fix by grepping for the symbol, which returns a hit whether
+the code is wired or dead. When a fix claims a behaviour, follow it into the code
+path that produces it.
+
 ## Spec coverage — only when the plan carries a `Spec ID`
 
 `implementation-planner` writes a section 1a mapping every `AC-`/`EC-` in the

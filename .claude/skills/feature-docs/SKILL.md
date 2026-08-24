@@ -72,7 +72,7 @@ append a changelog section.
 <Bulleted list, one bullet per surface/entry point the feature is visible at.
 Each bullet names the surface, what it shows, and links the primary file
 responsible — relative path from docs/features/, e.g.
-`([PRRow.tsx](../../client/src/app/repos/[repoId]/pulls/_components/PRRow/PRRow.tsx))`.
+`([PRRow.tsx](../../../client/src/app/repos/[repoId]/pulls/_components/PRRow/PRRow.tsx))`.
 This section answers "where do I see this and what does it look like" —
 no implementation detail yet.>
 

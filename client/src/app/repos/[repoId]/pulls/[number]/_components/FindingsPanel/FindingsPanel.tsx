@@ -18,6 +18,7 @@ export function FindingsPanel({
   prId,
   repoFullName,
   headSha,
+  reviewAgentId = null,
   severityFilter = null,
   focusFindingId = null,
 }: {
@@ -25,6 +26,9 @@ export function FindingsPanel({
   prId: string;
   repoFullName?: string | null;
   headSha?: string | null;
+  /** The review run's agent — threaded down to FindingCard's "Turn into eval
+   *  case" button (`null` disables it, AC-16). */
+  reviewAgentId?: string | null;
   /** Restricts the panel to one severity (PR-detail counter-row filter). */
   severityFilter?: SeverityLevel | null;
   /** A finding targeted via `?findingItem` — expanded by default. */
@@ -83,6 +87,7 @@ export function FindingsPanel({
               pending={action.isPending}
               repoFullName={repoFullName}
               headSha={headSha}
+              reviewAgentId={reviewAgentId}
               onAction={(act) => action.mutate({ findingId: f.id, action: act, prId })}
             />
           ))
