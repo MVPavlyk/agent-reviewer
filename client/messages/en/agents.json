@@ -50,6 +50,41 @@
       "evals": "Evals",
       "stats": "Stats",
       "ci": "CI"
+    },
+    "evals": {
+      "title": "Evals",
+      "passingBadge": "{passing} / {total} passing",
+      "runAll": "Run all evals",
+      "running": "Running…",
+      "partial": "partial",
+      "notRan": "{count, plural, one {# case did not finish} other {# cases did not finish}}",
+      "progress": "{done} / {total}",
+      "metrics": {
+        "recall": "Recall",
+        "precision": "Precision",
+        "citation": "Citation accuracy",
+        "traces": "Traces passed",
+        "cost": "Cost"
+      },
+      "casesHeading": "Cases",
+      "empty": {
+        "title": "No eval cases yet",
+        "body": "Eval cases come from resolved findings — accept or dismiss a finding in a review, then use \"Turn into eval case\" to add it here."
+      },
+      "case": {
+        "status": {
+          "passed": "passed",
+          "failed": "failed",
+          "never_run": "never run"
+        },
+        "expectedOnly": "expected {expected, plural, one {# finding} other {# findings}}",
+        "expectedGot": "expected {expected, plural, one {# finding} other {# findings}}, got {got}",
+        "modalSubtitle": "Read-only — created from a resolved finding.",
+        "lastRun": "Last run",
+        "diff": "Diff",
+        "expectedOutput": "Expected output",
+        "expectedEmpty": "empty [] — no finding expected in this diff"
+      }
     }
   },
   "config": {

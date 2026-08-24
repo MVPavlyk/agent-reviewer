@@ -73,4 +73,14 @@ describe("A2 Agent Editor (smoke)", () => {
     expect(screen.getByRole("switch", { name: "API Contract Rubric attached" })).toBeChecked();
     expect(screen.getByRole("switch", { name: "No Console Logs attached" })).not.toBeChecked();
   });
+
+  it("shows exactly 4 tabs (Config/Skills/Context/Evals) — no Stats/CI (AC-45)", () => {
+    renderWithIntl(<AgentEditor agent={AGENT} tab="config" onTab={() => {}} />);
+    expect(screen.getByRole("button", { name: "Config" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Skills" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Context" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Evals" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Stats" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "CI" })).not.toBeInTheDocument();
+  });
 });

@@ -25,10 +25,270 @@ const DEFAULT_MODEL = 'deepseek/deepseek-v4-flash';
  *
  * Course lessons populate the other tables (skills, conventions, memory, eval,
  * …) once their features are built — they start empty here.
+ *
+ * L-06 (eval pipeline): PR #482's `pr_files` now carry real unified-diff
+ * `patch` bodies and its review carries 11 findings, all resolved
+ * (accepted_at XOR dismissed_at), so the eval pipeline has a real dataset to
+ * convert into eval cases from day one. Every block below (pr_files, review,
+ * findings, `agent_id` backfill) does its OWN "insert if missing / backfill
+ * if present but incomplete" check — none of it is gated behind the outer
+ * `if (!pr)`, because on any already-seeded dev database `pr` already
+ * exists and that gate would silently skip the new columns forever.
  */
 
 export const DEFAULT_WORKSPACE_NAME = 'default';
 export const SYSTEM_USER_EMAIL = 'you@local';
+
+// ---- PR #482 pr_files: unified-diff hunk BODIES only (no `diff --git`/`---`/
+// `+++` headers — `diffFromPrFiles` in modules/reviews/diff-loader.ts adds
+// those back when reassembling a UnifiedDiff from persisted patches).
+const CONFIG_PATCH = [
+  '@@ -1,8 +1,11 @@',
+  " export const config = {",
+  "   port: process.env.PORT || 3000,",
+  "   env: process.env.NODE_ENV || 'development',",
+  "+  stripeSecretKey: 'sk_live_EXAMPLE_NOT_A_REAL_KEY',",
+  '+  rateLimit: {',
+  '+    windowMs: 60_000,',
+  '+    max: 100,',
+  '+  },',
+  '+  webhookSecret: process.env.WEBHOOK_SECRET,',
+  '   dbUrl: process.env.DATABASE_URL,',
+  ' };',
+].join('\n');
+
+const USERS_PATCH = [
+  '@@ -40,8 +45,12 @@ async function listUsers(ids: string[]) {',
+  ' export async function listUsers(ids: string[]) {',
+  '-  return ids.map((id) => db.users.findOne(id));',
+  '+  const users = [];',
+  '+  for (const id of ids) {',
+  '+    const user = await db.users.findOne(id);',
+  '+    users.push(user);',
+  '+  }',
+  '+  return users;',
+  ' }',
+  '',
+  ' export async function getUser(id: string) {',
+].join('\n');
+
+const RATELIMIT_PATCH = [
+  '@@ -1,3 +1,25 @@',
+  " import { FastifyPluginAsync } from 'fastify';",
+  "+import type { FastifyRequest, FastifyReply } from 'fastify';",
+  '+',
+  '+interface Bucket {',
+  '+  tokens: number;',
+  '+  lastRefill: number;',
+  '+}',
+  '+',
+  '+const buckets = new Map<string, Bucket>();',
+  '+',
+  '+function refill(bucket: Bucket, now: number, rate: number, capacity: number) {',
+  '+  const elapsed = now - bucket.lastRefill;',
+  '+  bucket.tokens = Math.min(capacity, bucket.tokens + elapsed * rate);',
+  '+  bucket.lastRefill = now;',
+  '+}',
+  '+',
+  '+export function rateLimitPlugin(): FastifyPluginAsync {',
+  '+  return async (app) => {',
+  "+    app.addHook('onRequest', async (req: FastifyRequest, reply: FastifyReply) => {",
+  '+      const key = req.ip;',
+  '+      const bucket = buckets.get(key) ?? { tokens: 10, lastRefill: Date.now() };',
+  '+      refill(bucket, Date.now(), 1, 10);',
+  '+    });',
+  '+  };',
+  '+}',
+].join('\n');
+
+const WEBHOOKS_PATCH = [
+  '@@ -10,6 +10,15 @@ export async function handleWebhook(req: FastifyRequest, reply: FastifyReply) {',
+  "   const signature = req.headers['x-webhook-signature'];",
+  '-  const body = req.body;',
+  '+  const rawBody = req.rawBody;',
+  '+  if (!signature || !verifySignature(rawBody, signature)) {',
+  "+    return reply.code(401).send({ error: 'invalid signature' });",
+  '+  }',
+  '+  const body = JSON.parse(rawBody);',
+  '+  const event = body.type;',
+  "+  if (event === 'payment.succeeded') {",
+  '+    await handlePaymentSucceeded(body.data);',
+  '+  }',
+  '   return reply.code(200).send({ ok: true });',
+  ' }',
+].join('\n');
+
+interface SeedPrFile {
+  path: string;
+  additions: number;
+  deletions: number;
+  patch: string;
+}
+
+const SEED_PR_FILES: SeedPrFile[] = [
+  { path: 'src/config.ts', additions: 8, deletions: 0, patch: CONFIG_PATCH },
+  { path: 'src/api/users.ts', additions: 6, deletions: 1, patch: USERS_PATCH },
+  { path: 'src/middleware/ratelimit.ts', additions: 24, deletions: 0, patch: RATELIMIT_PATCH },
+  { path: 'src/api/public/webhooks.ts', additions: 9, deletions: 1, patch: WEBHOOKS_PATCH },
+];
+
+interface SeedFinding {
+  file: string;
+  startLine: number;
+  endLine: number;
+  severity: 'CRITICAL' | 'WARNING' | 'SUGGESTION';
+  category: string;
+  title: string;
+  rationale: string;
+  suggestion?: string;
+  confidence: number;
+  /** Exactly one of these is set — every seed finding is resolved. */
+  accepted: boolean;
+}
+
+// L-06: >=8 convertible findings (all of these are kind='finding' + resolved),
+// with >=3 dismissed findings sharing a file/hunk with an accepted one (D-9),
+// so the eval-case dataset built from this seed has real must_not_flag
+// material in the same "hot" zones as must_find material, not in cold spots
+// an agent would never visit.
+const SEED_FINDINGS: SeedFinding[] = [
+  // src/config.ts (CONFIG_PATCH hunk covers new lines 1-11)
+  {
+    file: 'src/config.ts',
+    startLine: 4,
+    endLine: 4,
+    severity: 'CRITICAL',
+    category: 'security',
+    title: 'Hardcoded Stripe secret key in commit',
+    rationale: "Line 4 contains a literal `sk_live_` Stripe secret key.",
+    suggestion: 'Move to an environment variable and rotate the key immediately.',
+    confidence: 0.98,
+    accepted: true,
+  },
+  {
+    file: 'src/config.ts',
+    startLine: 6,
+    endLine: 8,
+    severity: 'SUGGESTION',
+    category: 'style',
+    title: 'Rate limit config object could use a named type',
+    rationale: 'Inline object literal for `rateLimit` duplicates shape used elsewhere.',
+    suggestion: 'Extract a `RateLimitConfig` interface.',
+    confidence: 0.4,
+    accepted: false,
+  },
+  // src/api/users.ts (USERS_PATCH hunk covers new lines 45-54)
+  {
+    file: 'src/api/users.ts',
+    startLine: 46,
+    endLine: 51,
+    severity: 'WARNING',
+    category: 'perf',
+    title: 'N+1 query in user list endpoint',
+    rationale: 'Loop issues one query per user instead of a single batched query.',
+    suggestion: 'Use a single `IN` query and group results in memory.',
+    confidence: 0.86,
+    accepted: true,
+  },
+  {
+    file: 'src/api/users.ts',
+    startLine: 48,
+    endLine: 49,
+    severity: 'SUGGESTION',
+    category: 'bug',
+    title: 'Missing null check on findOne result',
+    rationale: '`db.users.findOne(id)` can return null for a stale id; pushed as-is.',
+    suggestion: 'Filter out nulls before returning.',
+    confidence: 0.62,
+    accepted: true,
+  },
+  {
+    file: 'src/api/users.ts',
+    startLine: 52,
+    endLine: 52,
+    severity: 'SUGGESTION',
+    category: 'style',
+    title: 'Variable name `users` shadows outer import',
+    rationale: 'Local `users` shadows the `users` table import used elsewhere in the file.',
+    suggestion: 'Rename to `foundUsers`.',
+    confidence: 0.3,
+    accepted: false,
+  },
+  // src/middleware/ratelimit.ts (RATELIMIT_PATCH hunk covers new lines 1-25)
+  {
+    file: 'src/middleware/ratelimit.ts',
+    startLine: 12,
+    endLine: 14,
+    severity: 'WARNING',
+    category: 'perf',
+    title: 'Token bucket refill lacks a max-cap enforcement path',
+    rationale: '`refill()` clamps to `capacity` but the caller never validates `capacity` is positive.',
+    suggestion: 'Guard against a zero/negative capacity at plugin registration.',
+    confidence: 0.71,
+    accepted: true,
+  },
+  {
+    file: 'src/middleware/ratelimit.ts',
+    startLine: 17,
+    endLine: 19,
+    severity: 'SUGGESTION',
+    category: 'style',
+    title: 'Prefer a named function export over an inline arrow factory',
+    rationale: '`rateLimitPlugin` returns an anonymous arrow — harder to name in stack traces.',
+    suggestion: 'Extract the plugin body to a named function.',
+    confidence: 0.35,
+    accepted: false,
+  },
+  {
+    file: 'src/middleware/ratelimit.ts',
+    startLine: 20,
+    endLine: 21,
+    severity: 'CRITICAL',
+    category: 'security',
+    title: 'Rate limit key uses req.ip without trusting-proxy configuration',
+    rationale: 'Behind a reverse proxy `req.ip` is the proxy address, not the client — trivially bypassed.',
+    suggestion: 'Configure Fastify `trustProxy` and key on the forwarded client IP.',
+    confidence: 0.83,
+    accepted: true,
+  },
+  // src/api/public/webhooks.ts (WEBHOOKS_PATCH hunk covers new lines 10-21)
+  {
+    file: 'src/api/public/webhooks.ts',
+    startLine: 12,
+    endLine: 13,
+    severity: 'CRITICAL',
+    category: 'security',
+    title: 'Webhook signature check skips constant-time comparison',
+    rationale: '`verifySignature` is not shown to use a constant-time compare — timing attack risk.',
+    suggestion: 'Use `crypto.timingSafeEqual` when comparing signatures.',
+    confidence: 0.79,
+    accepted: true,
+  },
+  {
+    file: 'src/api/public/webhooks.ts',
+    startLine: 15,
+    endLine: 15,
+    severity: 'WARNING',
+    category: 'bug',
+    title: 'Missing try/catch around JSON.parse of raw webhook body',
+    rationale: 'A malformed payload throws unhandled inside the route.',
+    suggestion: 'Wrap the parse and return 400 on failure.',
+    confidence: 0.68,
+    accepted: false,
+  },
+  {
+    file: 'src/api/public/webhooks.ts',
+    startLine: 17,
+    endLine: 19,
+    severity: 'SUGGESTION',
+    category: 'style',
+    title: 'Prefer a switch over if for event-type dispatch',
+    rationale: 'Single `if` today, but the event set will grow — a switch scales better.',
+    suggestion: 'Switch on `event` once a second event type is handled.',
+    confidence: 0.28,
+    accepted: false,
+  },
+];
 
 export async function seed(db: Db): Promise<{ workspaceId: string; userId: string }> {
   // ---- workspace + user (no-auth defaults) ----
@@ -93,92 +353,11 @@ export async function seed(db: Db): Promise<{ workspaceId: string; userId: strin
   }
   const repoId = repo!.id;
 
-  // ---- PR #482 (rate limiting) ----
-  let [pr] = await db
-    .select()
-    .from(t.pullRequests)
-    .where(and(eq(t.pullRequests.repoId, repoId), eq(t.pullRequests.number, 482)));
-  if (!pr) {
-    [pr] = await db
-      .insert(t.pullRequests)
-      .values({
-        workspaceId,
-        repoId,
-        number: 482,
-        title: 'Add rate limiting to public API endpoints',
-        author: 'marisa.koch',
-        branch: 'feat/rate-limit-public',
-        base: 'main',
-        headSha: 'a1b2c3d4e5f6',
-        additions: 247,
-        deletions: 38,
-        filesCount: 9,
-        status: 'needs_review',
-        body: 'Add rate limiting to public API endpoints to prevent abuse from unauthenticated clients.',
-      })
-      .returning();
-
-    // pr_files (subset)
-    await db.insert(t.prFiles).values([
-      { prId: pr!.id, path: 'src/middleware/ratelimit.ts', additions: 84, deletions: 0 },
-      { prId: pr!.id, path: 'src/api/public/webhooks.ts', additions: 31, deletions: 6 },
-      { prId: pr!.id, path: 'src/config.ts', additions: 4, deletions: 0 },
-      { prId: pr!.id, path: 'src/api/users.ts', additions: 7, deletions: 2 },
-    ]);
-
-    // pr_commits
-    await db.insert(t.prCommits).values({
-      prId: pr!.id,
-      sha: 'a1b2c3d4e5f6',
-      message: 'Add token-bucket rate limiter',
-      author: 'marisa.koch',
-    });
-
-    // a sample review + findings so the PR shows results before the first run
-    const [review] = await db
-      .insert(t.reviews)
-      .values({
-        workspaceId,
-        prId: pr!.id,
-        kind: 'review',
-        verdict: 'request_changes',
-        summary:
-          'Solid middleware approach, but a Stripe secret key is committed in plaintext and the user-list endpoint introduces an N+1 query under the new limiter.',
-        score: 61,
-        model: 'seed',
-      })
-      .returning();
-
-    await db.insert(t.findings).values([
-      {
-        reviewId: review!.id,
-        file: 'src/config.ts',
-        startLine: 12,
-        endLine: 12,
-        severity: 'CRITICAL',
-        category: 'security',
-        title: 'Hardcoded Stripe secret key in commit',
-        rationale: 'Line 12 contains a literal `sk_live_` Stripe secret key.',
-        suggestion: 'Move to env var and rotate the key immediately.',
-        confidence: 0.98,
-      },
-      {
-        reviewId: review!.id,
-        file: 'src/api/users.ts',
-        startLine: 45,
-        endLine: 52,
-        severity: 'WARNING',
-        category: 'perf',
-        title: 'N+1 query in user list endpoint',
-        rationale: 'Loop issues one query per user → N+1.',
-        suggestion: 'Use a single IN query and group in memory.',
-        confidence: 0.86,
-      },
-    ]);
-  }
-
   // ---- built-in agents (the three starter presets) ----
   // Prompt bodies live in ./seed-prompts.ts (mirrored in docs/agent-prompts/*.md).
+  // Runs BEFORE the PR/review block below: the seed review references
+  // "General Reviewer"'s id as `reviews.agent_id`, so the agent row must
+  // already exist (or be created here) by the time that block runs.
   const seedAgents: Array<typeof t.agents.$inferInsert> = [
     {
       workspaceId,
@@ -246,6 +425,136 @@ export async function seed(db: Db): Promise<{ workspaceId: string; userId: strin
       .from(t.agents)
       .where(and(eq(t.agents.workspaceId, workspaceId), eq(t.agents.name, a.name)));
     if (!existing) await db.insert(t.agents).values(a);
+  }
+
+  const [generalReviewerAgent] = await db
+    .select()
+    .from(t.agents)
+    .where(and(eq(t.agents.workspaceId, workspaceId), eq(t.agents.name, 'General Reviewer')));
+  const generalReviewerAgentId = generalReviewerAgent!.id;
+
+  // ---- PR #482 (rate limiting) ----
+  let [pr] = await db
+    .select()
+    .from(t.pullRequests)
+    .where(and(eq(t.pullRequests.repoId, repoId), eq(t.pullRequests.number, 482)));
+  if (!pr) {
+    [pr] = await db
+      .insert(t.pullRequests)
+      .values({
+        workspaceId,
+        repoId,
+        number: 482,
+        title: 'Add rate limiting to public API endpoints',
+        author: 'marisa.koch',
+        branch: 'feat/rate-limit-public',
+        base: 'main',
+        headSha: 'a1b2c3d4e5f6',
+        additions: 247,
+        deletions: 38,
+        filesCount: 9,
+        status: 'needs_review',
+        body: 'Add rate limiting to public API endpoints to prevent abuse from unauthenticated clients.',
+      })
+      .returning();
+  }
+  const prId = pr!.id;
+
+  // ---- pr_files: insert-if-missing, BACKFILL patch-if-present-but-null ----
+  // (not gated behind `if (!pr)` above — an already-seeded dev DB has `pr`
+  // but, before L-06, no `patch` bodies on its pr_files rows.)
+  for (const file of SEED_PR_FILES) {
+    const [existingFile] = await db
+      .select()
+      .from(t.prFiles)
+      .where(and(eq(t.prFiles.prId, prId), eq(t.prFiles.path, file.path)));
+    if (!existingFile) {
+      await db.insert(t.prFiles).values({
+        prId,
+        path: file.path,
+        additions: file.additions,
+        deletions: file.deletions,
+        patch: file.patch,
+      });
+    } else if (!existingFile.patch) {
+      await db
+        .update(t.prFiles)
+        .set({ patch: file.patch, additions: file.additions, deletions: file.deletions })
+        .where(eq(t.prFiles.id, existingFile.id));
+    }
+  }
+
+  // ---- pr_commits ----
+  const [existingCommit] = await db
+    .select()
+    .from(t.prCommits)
+    .where(and(eq(t.prCommits.prId, prId), eq(t.prCommits.sha, 'a1b2c3d4e5f6')));
+  if (!existingCommit) {
+    await db.insert(t.prCommits).values({
+      prId,
+      sha: 'a1b2c3d4e5f6',
+      message: 'Add token-bucket rate limiter',
+      author: 'marisa.koch',
+    });
+  }
+
+  // ---- sample review + findings, resolved for the eval-case dataset ----
+  let [review] = await db
+    .select()
+    .from(t.reviews)
+    .where(and(eq(t.reviews.prId, prId), eq(t.reviews.kind, 'review')));
+  if (!review) {
+    [review] = await db
+      .insert(t.reviews)
+      .values({
+        workspaceId,
+        prId,
+        agentId: generalReviewerAgentId,
+        kind: 'review',
+        verdict: 'request_changes',
+        summary:
+          'Solid middleware approach, but a Stripe secret key is committed in plaintext, the user-list endpoint introduces an N+1 query, and the webhook handler skips a constant-time signature check.',
+        score: 61,
+        model: 'seed',
+      })
+      .returning();
+  } else if (!review.agentId) {
+    await db
+      .update(t.reviews)
+      .set({ agentId: generalReviewerAgentId })
+      .where(eq(t.reviews.id, review.id));
+  }
+
+  // ---- findings: insert-if-missing, REPLACE-if-unmarked ----
+  // (not gated behind `if (!review)` above — a DB seeded before L-06 has this
+  // review with 2 old, unmarked findings; without this, the marked 11-finding
+  // eval-case dataset never materializes on an already-seeded dev DB.)
+  const existingFindings = await db
+    .select()
+    .from(t.findings)
+    .where(eq(t.findings.reviewId, review!.id));
+  const anyMarked = existingFindings.some((f) => f.acceptedAt || f.dismissedAt);
+  if (existingFindings.length === 0 || !anyMarked) {
+    if (existingFindings.length > 0) {
+      await db.delete(t.findings).where(eq(t.findings.reviewId, review!.id));
+    }
+    const resolvedAt = new Date('2026-08-20T12:00:00Z');
+    await db.insert(t.findings).values(
+      SEED_FINDINGS.map((f) => ({
+        reviewId: review!.id,
+        file: f.file,
+        startLine: f.startLine,
+        endLine: f.endLine,
+        severity: f.severity,
+        category: f.category,
+        title: f.title,
+        rationale: f.rationale,
+        suggestion: f.suggestion,
+        confidence: f.confidence,
+        acceptedAt: f.accepted ? resolvedAt : null,
+        dismissedAt: f.accepted ? null : resolvedAt,
+      })),
+    );
   }
 
   // ---- skills (L-02) ----

@@ -9,7 +9,15 @@
     "replyToAuthor": "Reply to author",
     "replyPlaceholder": "Reply to the author about this finding…",
     "sendReply": "Send reply",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "evalCase": {
+      "button": "Turn into eval case",
+      "disabledHint": "This review has no agent — eval cases need one",
+      "unresolvedHint": "Accept or Dismiss first",
+      "toastSuccess": "Eval case created",
+      "openInEvals": "Open in Evals",
+      "created": "Eval case created"
+    }
   },
   "trifecta": {
     "lethal": "LETHAL TRIFECTA — ALL 3 PRESENT",

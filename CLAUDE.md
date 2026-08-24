@@ -119,6 +119,9 @@ them on your own.
 
 ## Commands
 `./scripts/dev.sh` — Postgres + migrate + seed + API + web, from zero.
+`pnpm verify:l06` (run from `server/`) — one-command gate for the eval-pipeline
+feature: typecheck + tests across `server`/`client`/`reviewer-core` plus the
+static import check on `reviewer-core/src/eval/**` (`scripts/verify-l06.sh`).
 Per-package commands: see that package's CLAUDE.md.
 
 ### No system Node in the agent shell

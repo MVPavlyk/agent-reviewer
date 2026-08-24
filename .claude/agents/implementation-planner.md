@@ -122,6 +122,17 @@ link where items get lost. Concretely:
 - **Do not restate the spec.** Section 1a is a mapping table, not a copy of
   the acceptance criteria. Reference IDs; the implementer does not need the
   spec's prose, it needs the steps.
+- **But carry each criterion's discriminating detail** — the names, counts,
+  and negative conditions that decide whether it is met. This is not a
+  contradiction of the rule above: compressing "four tiles — RECALL, PRECISION,
+  CITATION ACCURACY, TRACES PASSED — each with a delta against the previous
+  batch" down to "4 tiles + list + button" is not brevity, it is loss. That
+  exact compression happened in a measured run: the ID was present in 1a, the
+  step existed, the test was green, the implementer followed the plan
+  faithfully — and the criterion was still lost, because every mechanical check
+  verifies that an ID is *mapped*, and none can see that it was *paraphrased
+  away*. ID-set diffing catches omission; only the row's own wording catches
+  this.
 - **`Status: draft` is a flag, not a blocker.** If the spec's header still
   reads `draft`, plan anyway but say so in section 7 — the user may not have
   approved it yet, and planning against an unapproved spec is a risk worth

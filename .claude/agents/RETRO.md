@@ -85,3 +85,74 @@ in `~/.claude/projects/`. A retro run after the scratchpad is gone can still
 report session totals but has lost every per-agent breakdown.
 → `sdd` now writes a dispatch ledger into `state.md` as the run proceeds, and
 offers `workflow-retro` at close-out rather than leaving it to be remembered.
+
+---
+
+## 2026-08-23 — eval-pipeline (SPEC-05), 22 dispatches, 3.1M+ subagent tokens
+
+**Turns, not tokens, predict a truncated dispatch — the cliff is ~135-145 turns.** Measured across
+14 `implementer` calls: 145 turns truncated, 143 truncated, 137 survived by one tool call, 136
+truncated; while 118 and 109 finished cleanly. Token count did not predict it — a 199k dispatch
+lived and a 160k one died. Budget implementer calls in **turns**, and treat any call likely to
+exceed ~120 as one that must be split, regardless of how few steps it carries. A step that creates
+a component *plus* its test file is worth ~2 ordinary steps.
+→ proposed for `sdd` §3.1: size calls by expected turns, cap at ~120, and count test-file creation
+as a separate step-weight.
+
+**An output-bound agent truncates at a completely different limit than a tool-bound one.**
+`implementation-planner` died at **61 turns** producing a 111-row coverage table, while implementers
+ran to 145. When a dispatch's cost is in what it *writes* rather than what it *reads*, split by
+output section up front — for a plan, "spec half A" and "spec half B", each emitting its own §1a.
+Recovering a truncated plan through three `SendMessage` resumes cost about as much as the original
+attempt.
+→ proposed for `sdd` §3: split planning when the spec carries more than ~60 AC/EC, the same
+threshold already applied to `plan-verifier`.
+
+**A coverage table proves an ID is present, not that the criterion survived intact.** `AC-46`
+("four tiles — RECALL, PRECISION, CITATION ACCURACY, TRACES PASSED — each with a delta") was
+compressed in §1a to "RTL: 4 tiles + list + button". Every mechanical check passed: the ID was in
+the table, the step existed, the test was green. The implementer executed the plan faithfully and
+the criterion was still lost. ID-set diffing catches omission; it cannot catch paraphrase.
+→ proposed for `implementation-planner`: §1a rows must carry the criterion's *discriminating
+detail* (names, counts, negative conditions), not a restatement of the step title.
+
+**Grepping for a symbol is not evidence that the symbol is wired.** A fix was signed off because
+`grep "metricRowText"` returned a hit — the function existed, was never called, and rendered
+nothing. It survived `tsc` (no `noUnusedLocals` in that package), survived the test suite (the test
+asserted other criteria and merely *mentioned* the field in a fixture), and survived the
+orchestrator's own confirmation. When verifying a fix, grep for the **call site** or assert the
+rendered behaviour; a declaration proves only that someone wrote a helper.
+→ proposed for `plan-verifier` and for `sdd`'s post-fix confirmation: a "готово, коли" phrased as
+"function X exists" is not acceptable; it must name a call site or an observable behaviour.
+
+**A truncated dispatch is most dangerous when it dies during its own verification step.** The fix-1
+call stopped at "now let's move to Step 5" — all five steps' edits were on disk, so the work
+*looked* complete, but the check the plan demanded for step 5 never ran. Treat "truncated" as
+"unverified", not as "unfinished": re-run the plan's done-conditions yourself rather than inferring
+completeness from file state.
+
+**Hand a fresh agent the current state, not the report that motivated the task.** `test-writer` was
+given the iter-0 verifier reports as its work list and declared six already-fixed criteria to be
+live production bugs, refusing (correctly, for its stale premise) to write tests for them. Reports
+name what to look at; they are not a statement of what is still true two dispatches later.
+→ proposed for `sdd` Phase 7: hand `test-writer` the parked list **plus** an explicit line that the
+fix loop has closed and the code is the authority.
+
+**Splitting calls to avoid truncation removes shared memory, and duplication is the tax.** Steps 16
+and 17, in separate cold dispatches, each wrote their own `versionLabel`/`passLabel`; step 18 became
+the third consumer and promoted them to a shared module. The anchors passed forward listed only the
+*new* exports of the feature; nothing told call N what call N-1 had already built that it could
+reuse.
+→ proposed for `sdd` §4: the carried-forward anchor block should include reusable helpers created by
+previous calls, not just their entry points.
+
+**Narrow fix plans were the cheapest, cleanest dispatches of the run.** fix-plan-2 (2 steps) and
+fix-plan-3 (1 step) cost 98,846 and 95,933 tokens at 47 and 45 turns, both returning complete
+reports — against a 14-call implementer average well above that. Both named file, line, mechanism
+and a falsifiable done-condition, so no turns went to discovery. The general shape holds beyond fix
+loops: a dispatch that has to *find* its target costs multiples of one that is *given* it.
+
+**Prompt size is negligible; dispatch scope is everything.** All 22 prompts together were 87,627
+characters (~22k tokens, 0.7 % of the run). The single largest prompt — a hand transcription of six
+mockups into `spec-creator` — was also the highest-leverage, because no later agent had to re-derive
+the design. Do not economise on instructions; economise on how much work one dispatch must carry.

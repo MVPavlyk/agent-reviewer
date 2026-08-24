@@ -193,6 +193,14 @@ The planner is required to block on that question if nobody answers it; you
 are the caller and you already know the answer, so answering it in the opening
 prompt saves a full round-trip per run.
 
+**Split the planning dispatch when the spec carries more than ~60 `AC-`/`EC-`
+IDs** — the same threshold Phase 5 applies to `plan-verifier`, for a different
+reason. A planner is **output-bound**, not tool-bound: measured, one died at just
+**61 turns** while producing a 111-row §1a coverage table, where implementers in
+the same run ran to 145. Split by spec half (or by package), each dispatch
+emitting its own §1a, and stitch the halves yourself. Recovering a truncated plan
+through `SendMessage` resumes cost about as much as the original attempt.
+
 The planner has no `Write` tool. It returns the plan as text; **you** save it
 to `30-plan.md` and copy it to `.devdigest/plans/<slug>.md`.
 
@@ -223,6 +231,17 @@ per call — and fewer when the steps involve heavy file creation (a UI step wit
 more than the split you avoided: you lose its report, and you cannot tell what
 landed without going to disk yourself.
 
+**The cliff sits at ~135-145 turns, and tokens do not predict it.** Measured over
+14 implementer calls in one run: 145 turns truncated, 143 truncated, 137 survived
+by a single tool call, 136 truncated — while a 199k-token call lived and a
+160k-token one died. Treat **~120 turns as the budget** and split anything likely
+to exceed it, however few steps it nominally carries. **A step that creates a
+component AND its test file weighs roughly two ordinary steps** — three such steps
+truncated three times in that run; two-step calls returned clean reports every
+time. Say so in the dispatch prompt as well: an agent told "if you approach your
+budget, stop and report what is done rather than truncating mid-file" does exactly
+that, and a partial report costs far less than a lost one.
+
 ### Gate 2 — the user approves the plan
 
 Show the path, the step count, the call split, and §7 (risks/open questions).
@@ -251,6 +270,13 @@ path-not-bodies rule still holds. Every fresh agent starts cold, and downstream
 agents measurably burn 20-48 shell calls re-finding anchors that an earlier
 report already named. This is the cheapest saving in the whole pipeline.
 
+The anchor block must also carry **what earlier calls built that this one could
+reuse** — shared helpers, formatters, predicates — not only the entry points of
+the feature under construction. Splitting calls to dodge truncation removes the
+shared memory that would otherwise prevent duplication: in one run two UI steps in
+separate cold dispatches each wrote their own copy of the same two formatters, and
+only the third consumer noticed and promoted them.
+
 **Record the cost of each dispatch in `state.md` as it completes**: agent type,
 tokens, tool calls, duration, from the task notification. Three numbers per
 line. The per-agent transcripts live in a scratchpad under `/private/tmp` and
@@ -261,6 +287,18 @@ went.
 If `implementer` reports a **blocker** (a plan step that is impossible, two
 steps that contradict), stop the phase. A blocker is a planner problem: go
 back to Phase 3 with the blocker text, not forward.
+
+**A truncated dispatch is "unverified", never "unfinished".** The most expensive
+failure of one measured run was a call that died at "now let's move to Step 5" —
+every edit was already on disk, so the work *looked* complete, and the check its
+own plan demanded for that step never ran. When a dispatch truncates, re-run the
+plan's "готово, коли" conditions yourself instead of inferring completeness from
+file state. And verify them the right way: **grep for the call site, not the
+symbol.** `grep "someHelper"` returns a hit whether the function is wired into the
+render path or sitting there dead — in that same run a helper that computed exactly
+what the criterion asked for was never called, passed `tsc` (no `noUnusedLocals`),
+passed a green test that asserted other criteria, and was signed off by the
+orchestrator on the strength of the grep alone.
 
 ### 4.1 — One early architecture check, as soon as a package's shape exists
 
