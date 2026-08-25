@@ -94,3 +94,6 @@ export {
   useCreateEvalCaseFromFinding,
 } from "./evals";
 export type { EvalDashboardAgentRow, EvalBatchPoll, StartBatchResult } from "./evals";
+
+export { useAgentCi, useExportCi, useCiRuns } from "./ci";
+export type { CiInstallationStatus } from "./ci";

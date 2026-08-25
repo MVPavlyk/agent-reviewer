@@ -35,6 +35,14 @@ export const NAV: NavGroup[] = [
       { key: "agents", label: "Agents", icon: "Cpu", href: "/agents", gKey: "a" },
     ],
   },
+  {
+    /* GLOBAL — cross-repo views. "CI Runs" is the only item this pass adds;
+       "Agent Performance" (referenced by the design + activeKeyFor's
+       "agent-performance" key) has no route/nav-item of its own yet — out
+       of scope for this pass, not omitted by mistake. */
+    section: "GLOBAL",
+    items: [{ key: "ci-runs", label: "CI Runs", icon: "Workflow", href: "/ci-runs" }],
+  },
 ];
 
 export const SETTINGS_ITEM: NavItemDef = {

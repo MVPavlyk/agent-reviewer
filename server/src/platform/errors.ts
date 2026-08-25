@@ -28,6 +28,12 @@ export class ValidationError extends AppError {
   }
 }
 
+export class UnauthorizedError extends AppError {
+  constructor(message = 'Unauthorized', details?: unknown) {
+    super('unauthorized', message, 401, details);
+  }
+}
+
 export class ExternalServiceError extends AppError {
   constructor(message: string, details?: unknown) {
     super('external_service_error', message, 502, details);

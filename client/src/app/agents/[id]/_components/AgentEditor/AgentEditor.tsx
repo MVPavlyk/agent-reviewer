@@ -1,6 +1,7 @@
 /* AgentEditor — basic agent config editor (model + system prompt). L-02 added
-   Skills, project-context lessons added Context, L-06 adds Evals. Stats/CI
-   from the original mockup stay out of scope. Tab state lives in ?tab=. */
+   Skills, project-context lessons added Context, L-06 adds Evals, SPEC-06
+   Pass 8 adds CI. Stats from the original mockup stays out of scope. Tab
+   state lives in ?tab=. */
 "use client";
 
 import React from "react";
@@ -11,6 +12,7 @@ import { ConfigTab } from "./_components/ConfigTab";
 import { SkillsTab } from "./_components/SkillsTab";
 import { ContextTab } from "./_components/ContextTab";
 import { EvalsTab } from "./_components/EvalsTab";
+import { CITab } from "../CITab";
 import { TABS } from "./constants";
 import { s } from "./styles";
 
@@ -24,6 +26,7 @@ export function AgentEditor({ agent, tab, onTab }: { agent: Agent; tab: string; 
   if (tab === "skills") body = <SkillsTab key={agent.id} agent={agent} />;
   else if (tab === "context") body = <ContextTab key={agent.id} agent={agent} />;
   else if (tab === "evals") body = <EvalsTab key={agent.id} agent={agent} />;
+  else if (tab === "ci") body = <CITab key={agent.id} agent={agent} />;
 
   return (
     <div style={s.wrap}>
