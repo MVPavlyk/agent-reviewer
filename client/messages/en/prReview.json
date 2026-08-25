@@ -47,6 +47,15 @@
     "mergedWarning": "Already merged — review is informational",
     "mergedTooltip": "This PR is already merged; running a review won’t affect the merged code."
   },
+  "multiPicker": {
+    "trigger": "Pick agents to run",
+    "modalTitle": "Pick agents to run",
+    "modalSubtitle": "Select two or more agents to run them in parallel.",
+    "confirm": "Run multi-agent review ({count})",
+    "cancel": "Cancel",
+    "errorTitle": "Couldn't start the run",
+    "errorBody": "Try again, or pick a different agent set."
+  },
   "runStatus": {
     "elapsed": "Running · {count} agent(s)",
     "approved": "approved",

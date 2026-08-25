@@ -84,6 +84,9 @@ export {
   useSetSkillContextDocs,
 } from "./context-docs";
 
+export { useRunMultiAgent, useMultiAgentRun, useMultiAgentRuns, useAgentEstimates } from "./multi-agent";
+export type { RunMultiAgentInput } from "./multi-agent";
+
 export {
   useAgentEvalCases,
   useAgentEvalBatches,

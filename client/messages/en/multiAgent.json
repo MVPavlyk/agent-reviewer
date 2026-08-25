@@ -1,0 +1,59 @@
+{
+  "picker": {
+    "selectAll": "Select all",
+    "noAgents": "No agents yet — create one",
+    "noHistory": "—"
+  },
+  "configure": {
+    "breadcrumb": "Multi-Agent Review",
+    "title": "Configure run",
+    "step1Label": "Pull request",
+    "step1Placeholder": "Choose a pull request…",
+    "step2EmptyTitle": "Pick a pull request first",
+    "step2EmptyBody": "Choose a PR above to select which agents to run.",
+    "runButton": "Run multi-agent review ({count})",
+    "running": "Starting…",
+    "estimateLine": "≈ {seconds}s · {cost} · parallel fan-out",
+    "estimatePartial": "partial — some agents have no run history yet",
+    "errorTitle": "Couldn't start the run",
+    "errorBody": "Try again, or pick a different agent set."
+  },
+  "history": {
+    "title": "Multi-Agent Review",
+    "titleForPr": "Multi-agent runs for #{number}",
+    "runButton": "Run a multi-agent review",
+    "empty": "No multi-agent runs yet",
+    "emptyBody": "Kick off a fan-out run across several agents to see the history here.",
+    "colPr": "Pull request",
+    "colRanAt": "Ran",
+    "colAgents": "Agents",
+    "colCost": "Cost"
+  },
+  "results": {
+    "breadcrumb": "Multi-Agent Review",
+    "configureRun": "Configure run",
+    "subtitle": "{count} selected agents · parallel",
+    "meta": "{count} agents · fan-out via worktrees · {seconds}s total · {cost}",
+    "modeColumns": "Columns",
+    "modeTabs": "Tabs",
+    "viewTrace": "View trace",
+    "findingsCount": "{count} findings",
+    "failedTitle": "This agent failed",
+    "failedBody": "No findings were produced — check the trace for details.",
+    "notFoundTitle": "Multi-agent run not found",
+    "notFoundBody": "This run doesn't exist, or you don't have access to it.",
+    "suggestedFix": "Suggested fix",
+    "accept": "Accept",
+    "dismiss": "Dismiss",
+    "learn": "Learn",
+    "turnIntoEvalCase": "Turn into eval case",
+    "replyToAuthor": "Reply to author",
+    "disagree": {
+      "title": "Where agents disagree",
+      "showOnlyConflicts": "Show only conflicts",
+      "didNotFlag": "did not flag",
+      "empty": "No cross-agent overlaps yet — findings from at least two agents on the same spot will show up here.",
+      "emptyRunning": "Run still in progress — disagreement groups appear once agents finish."
+    }
+  }
+}

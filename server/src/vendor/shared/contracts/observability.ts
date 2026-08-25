@@ -59,9 +59,13 @@ export const ConflictTake = z.object({
 export type ConflictTake = z.infer<typeof ConflictTake>;
 
 /**
- * A conflict = a file:line that at least one agent flagged and at least one
- * other agent (that also reviewed) did NOT, OR where agents assigned divergent
- * severities. Computed from persisted findings; not stored.
+ * A cross-agent group at a file:line touched by ≥2 agents. A group is a
+ * *conflict* when its `takes` diverge — at least one agent flagged the spot
+ * and at least one other agent (that also reviewed) did NOT, OR agents
+ * assigned divergent severities; otherwise it is agreement/corroboration
+ * (every agent that reviewed flagged it identically). There is no separate
+ * boolean field: a consumer derives which case it is from `takes` itself.
+ * Computed on-read from persisted findings; not stored.
  */
 export const Conflict = z.object({
   file: z.string(),
@@ -84,6 +88,51 @@ export const MultiAgentRun = z.object({
   conflicts: z.array(Conflict),
 });
 export type MultiAgentRun = z.infer<typeof MultiAgentRun>;
+
+// ---------------------------------------------------------------------------
+// Multi-agent run history (GET /multi-agent-runs) — L07.
+// ---------------------------------------------------------------------------
+
+/** One row in the multi-agent run history list — a summary, not the full
+ *  `MultiAgentRun` (no columns/conflicts; those are fetched on drill-in via
+ *  GET /pulls/:id/multi-agent/:multiRunId). */
+export const MultiAgentRunSummary = z.object({
+  id: z.string(),
+  pr_id: z.string(),
+  pr_number: z.number().int().nullish(),
+  pr_title: z.string().nullable(),
+  ran_at: z.string(),
+  agent_count: z.number().int(),
+  total_cost_usd: z.number().nullable(),
+  total_duration_ms: z.number().int(),
+});
+export type MultiAgentRunSummary = z.infer<typeof MultiAgentRunSummary>;
+
+// ---------------------------------------------------------------------------
+// Pre-run estimate (GET /agents/estimates?ids=…) — SPEC-05 G-5/D-6.
+// ---------------------------------------------------------------------------
+
+/** One agent's pre-run estimate: average of its last N=5 `done` runs (D-4).
+ *  Both fields are `null` (never 0 / a made-up number) when the agent has no
+ *  successful run history yet (AC-20). */
+export const AgentEstimate = z.object({
+  agent_id: z.string(),
+  time_ms: z.number().nullable(),
+  cost_usd: z.number().nullable(),
+});
+export type AgentEstimate = z.infer<typeof AgentEstimate>;
+
+/** Response of GET /agents/estimates. Aggregate `total_time_ms` = MAX and
+ *  `total_cost_usd` = SUM, computed ONLY from agents that have history
+ *  (AC-21); `partial: true` when at least one requested agent has none
+ *  (AC-22). */
+export const AgentEstimates = z.object({
+  per_agent: z.array(AgentEstimate),
+  total_time_ms: z.number().nullable(),
+  total_cost_usd: z.number().nullable(),
+  partial: z.boolean(),
+});
+export type AgentEstimates = z.infer<typeof AgentEstimates>;
 
 // ---------------------------------------------------------------------------
 // Per-agent Stats (GET /agents/:id/stats)
