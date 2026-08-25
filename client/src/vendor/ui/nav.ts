@@ -36,9 +36,13 @@ export const NAV: NavGroup[] = [
     ],
   },
   {
+    /* GLOBAL — cross-repo views. "Agent Performance" (referenced by the design
+       + activeKeyFor's "agent-performance" key) has no route/nav-item of its
+       own yet — out of scope, not omitted by mistake. */
     section: "GLOBAL",
     items: [
       { key: "multi-agent", label: "Multi-Agent Review", icon: "Users", href: "/multi-agent", gKey: "m" },
+      { key: "ci-runs", label: "CI Runs", icon: "Workflow", href: "/ci-runs" },
     ],
   },
 ];

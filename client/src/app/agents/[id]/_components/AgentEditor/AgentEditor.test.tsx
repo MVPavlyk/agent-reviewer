@@ -5,12 +5,50 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { Agent, Skill } from "@devdigest/shared";
 import agentsMessages from "../../../../../../messages/en/agents.json";
 import skillsMessages from "../../../../../../messages/en/skills.json";
+import ciMessages from "../../../../../../messages/en/ci.json";
 import { ToastProvider } from "@/lib/toast";
 
 // Mock the data hooks so the editor renders without a network/query client.
 vi.mock("@/lib/hooks/agents", () => ({
   useUpdateAgent: () => ({ mutate: vi.fn(), isPending: false, isSuccess: false, data: undefined }),
   useProviderModels: () => ({ data: [{ id: "gpt-4.1", provider: "openai" }] }),
+}));
+
+// CI tab (Pass 8) pulls the "ci" namespace and `useAgentCi` — mocked here so
+// the CI-tab test doesn't need a real QueryClientProvider network round-trip
+// (client/INSIGHTS.md 2026-08-11: mock `@/lib/hooks/ci` directly).
+vi.mock("@/lib/hooks/ci", () => ({
+  useAgentCi: () => ({
+    data: [
+      {
+        installation: {
+          id: "inst1",
+          agent_id: "ag1",
+          repo: "acme/repo-a",
+          target_type: "gha",
+          installed_at: "2026-08-20T00:00:00Z",
+          workflow_version: "1",
+          pr_url: null,
+        },
+        last_run: null,
+        runs: [],
+      },
+      {
+        installation: {
+          id: "inst2",
+          agent_id: "ag1",
+          repo: "acme/repo-b",
+          target_type: "gha",
+          installed_at: "2026-08-20T00:00:00Z",
+          workflow_version: "1",
+          pr_url: null,
+        },
+        last_run: null,
+        runs: [],
+      },
+    ],
+    isLoading: false,
+  }),
 }));
 
 // SkillsTab (L-02) pulls the "skills" namespace — a test's NextIntlClientProvider
@@ -51,7 +89,7 @@ function renderWithIntl(ui: React.ReactElement) {
   const qc = new QueryClient();
   return render(
     <QueryClientProvider client={qc}>
-      <NextIntlClientProvider locale="en" messages={{ agents: agentsMessages, skills: skillsMessages }}>
+      <NextIntlClientProvider locale="en" messages={{ agents: agentsMessages, skills: skillsMessages, ci: ciMessages }}>
         <ToastProvider>{ui}</ToastProvider>
       </NextIntlClientProvider>
     </QueryClientProvider>,
@@ -74,13 +112,20 @@ describe("A2 Agent Editor (smoke)", () => {
     expect(screen.getByRole("switch", { name: "No Console Logs attached" })).not.toBeChecked();
   });
 
-  it("shows exactly 4 tabs (Config/Skills/Context/Evals) — no Stats/CI (AC-45)", () => {
+  it("shows exactly 5 tabs (Config/Skills/Context/Evals/CI) — no Stats (AC-45, revised Pass 8)", () => {
     renderWithIntl(<AgentEditor agent={AGENT} tab="config" onTab={() => {}} />);
     expect(screen.getByRole("button", { name: "Config" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Skills" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Context" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Evals" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "CI" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Stats" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "CI" })).not.toBeInTheDocument();
+  });
+
+  it("renders the CI tab: heading, Active-in pill, and mounts the wizard from Add repository (AC-4/AC-5/AC-8)", () => {
+    renderWithIntl(<AgentEditor agent={AGENT} tab="ci" onTab={() => {}} />);
+    expect(screen.getByText("CI deployment")).toBeInTheDocument();
+    expect(screen.getByText("Active in 2 repos")).toBeInTheDocument();
+    expect(screen.getByText("acme/repo-a")).toBeInTheDocument();
   });
 });
