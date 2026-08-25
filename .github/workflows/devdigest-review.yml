@@ -1,0 +1,44 @@
+# devdigest-workflow-version: 2
+name: DevDigest Review
+permissions:
+  contents: read
+  pull-requests: write
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: "actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4"
+      - uses: "actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4"
+        with:
+          node-version: "20"
+      - name: Run DevDigest review
+        run: node .devdigest/runner/index.js
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          DEVDIGEST_POST_AS: pr_comment
+      - name: Report result to DevDigest
+        if: always()
+        env:
+          DEVDIGEST_INGEST_URL: http://localhost:3001
+          DEVDIGEST_INGEST_TOKEN: ${{ secrets.DEVDIGEST_INGEST_TOKEN }}
+          DEVDIGEST_COMMIT_SHA: ${{ github.sha }}
+          DEVDIGEST_REPOSITORY: ${{ github.repository }}
+        run: |-
+          if [ -f devdigest-result.json ]; then
+            curl -sS -f -X POST "$DEVDIGEST_INGEST_URL/ci/ingest" \
+              -H "Authorization: Bearer $DEVDIGEST_INGEST_TOKEN" \
+              -H "Content-Type: application/json" \
+              -H "X-Devdigest-Commit-Sha: $DEVDIGEST_COMMIT_SHA" \
+              -H "X-Devdigest-Repository: $DEVDIGEST_REPOSITORY" \
+              --data-binary @devdigest-result.json
+          else
+            echo "No devdigest-result.json produced; skipping ingest."
+          fi
