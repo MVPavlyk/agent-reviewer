@@ -11,6 +11,9 @@ import { loadDiff } from './diff-loader.js';
 import { selectSkillBodies } from '../skills/prompt-blocks.js';
 import type { SkillsRepository } from '../skills/repository.js';
 import { classifyAndStoreIntent } from './intent/service.js';
+import type { ContextDocsRepository } from '../context-docs/repository.js';
+import { resolveContextDocs } from '../context-docs/resolve.js';
+import { readContextDocsForRun } from '../context-docs/read-for-run.js';
 
 /** Thrown by a run when the user cancels it mid-flight (between map files). */
 export class RunCancelledError extends Error {
@@ -49,6 +52,7 @@ export class ReviewRunExecutor {
     private repo: ReviewRepository,
     private agents: Container['agentsRepo'],
     private skillsRepo: SkillsRepository,
+    private contextDocsRepo: ContextDocsRepository,
   ) {}
 
   /**
@@ -238,6 +242,51 @@ export class ReviewRunExecutor {
         enabledLinks.map((l) => ({ skillId: l.skill.id, skillVersion: l.skill.version })),
       );
 
+      // Project context docs (SPEC-01 AC-20..AC-34, 30-plan.md Крок 8) —
+      // resolved from the agent's own attachments + its enabled skills' own
+      // attachments via the SAME pure `resolveContextDocs` the `GET
+      // /agents/:id/context-docs` route uses (server/INSIGHTS.md 2026-08-03:
+      // never let the UI's view of "what's attached" diverge from the prompt).
+      // Read from the clone of THIS PR's OWN repo (`repo.clonePath`, i.e.
+      // `pull.repoId` → `repos.clone_path` — A-1/EC-14), never any other repo.
+      // Best-effort end to end: nothing here throws out of this branch — a
+      // missing/oversized/invalid document is skipped with a Live Log line and
+      // the run proceeds (AC-26, EC-4, EC-6, EC-7, EC-17). No token-budget
+      // check is performed; an overflow surfaces naturally as a provider error
+      // (AC-27, AC-28).
+      const [agentDocRows, skillDocLists] = await Promise.all([
+        this.contextDocsRepo.listForAgent(agent.id),
+        Promise.all(skillLinks.map((l) => this.contextDocsRepo.listForSkill(l.skill.id))),
+      ]);
+      const resolvedDocs = resolveContextDocs({
+        skills: skillLinks.map((l, i) => ({
+          id: l.skill.id,
+          name: l.skill.name,
+          enabled: l.skill.enabled,
+          order: l.order,
+          docs: skillDocLists[i]!.map((d) => ({ path: d.path, order: d.order })),
+        })),
+        agentDocs: agentDocRows.map((r) => ({ path: r.path, order: r.order })),
+      });
+
+      let specsBlocks: string[] = [];
+      let specsRead: string[] = [];
+      if (resolvedDocs.length > 0) {
+        if (repo.clonePath) {
+          const read = await readContextDocsForRun(
+            repo.clonePath,
+            resolvedDocs,
+            runLog,
+            this.container.config.contextDocRoots,
+          );
+          specsBlocks = read.specs;
+          specsRead = read.specsRead;
+          await this.contextDocsRepo.insertRunContextDocs(runId, read.attributions);
+        } else {
+          runLog.info('context docs: repo has no clone — skipping');
+        }
+      }
+
       // ---- Engine: assemble → single-pass → grounding -----------------------
       // The pure review pipeline lives in @devdigest/reviewer-core (shared with
       // the CI runner). The service owns only I/O: repo-intel context resolution
@@ -264,6 +313,7 @@ export class ReviewRunExecutor {
           ? { intent: { summary: intent.summary, in_scope: intent.in_scope, out_of_scope: intent.out_of_scope } }
           : {}),
         ...(skillBodies.length ? { skills: skillBodies } : {}),
+        ...(specsBlocks.length ? { specs: specsBlocks } : {}),
         task,
         sessionId: `${repo.owner}/${repo.name}#${pull.number}:${agent.name}`,
         onEvent: (e) => runLog.event(e.kind, e.msg, e.data),
@@ -341,7 +391,7 @@ export class ReviewRunExecutor {
         })),
         raw_output: outcome.raw,
         memory_pulled: [],
-        specs_read: [],
+        specs_read: specsRead,
         // Persisted log = the run's FULL event buffer (incl. shared pre-work:
         // diff load + intent), not just events recorded inside this method.
         log: runLog.logFor(runId),

@@ -79,4 +79,49 @@ describe("A5 Run Trace drawer (smoke)", () => {
     fireEvent.click(screen.getByText("Prompt assembly"));
     expect(screen.queryByText("Skills (dynamic)")).not.toBeInTheDocument();
   });
+
+  it("shows a Project context prompt block with the untrusted wrapper and Specs read paths when the trace has specs", () => {
+    const SPECS_TEXT = '<untrusted source="spec-0">\n# docs/a.md\n\nSome doc body\n</untrusted>';
+    useRunTraceMock.mockReturnValue({
+      data: {
+        ...TRACE,
+        prompt_assembly: { ...TRACE.prompt_assembly, specs: SPECS_TEXT },
+        specs_read: ["docs/a.md"],
+      },
+      isLoading: false,
+    });
+    renderWithIntl(<RunTraceDrawer runId="r1" agentName="Security" prNumber={482} onClose={() => {}} />);
+
+    // "Specs read" (Configuration section) lists the path.
+    expect(screen.getByText("docs/a.md")).toBeInTheDocument();
+
+    // Prompt assembly section: new label, expands to show the untrusted wrapper + path.
+    fireEvent.click(screen.getByText("Prompt assembly"));
+    // Scope to `span` so this doesn't also match the ancestor row/head divs
+    // that contain the same text as part of a longer concatenation.
+    const specsLabel = screen.getByText(
+      (content, el) => el?.tagName.toLowerCase() === "span" && content.startsWith("Project context — attached specs"),
+      { selector: "span" },
+    );
+    expect(specsLabel).toBeInTheDocument();
+    fireEvent.click(specsLabel);
+    const promptPre = screen.getByText(
+      (content, el) => el?.tagName.toLowerCase() === "pre" && content.includes('<untrusted source="spec-0">'),
+      { selector: "pre" },
+    );
+    expect(promptPre).toBeInTheDocument();
+    expect(promptPre.textContent).toContain("docs/a.md");
+  });
+
+  it("shows no Project context block and 'none' for Specs read when the trace has no specs (old trace / no docs attached)", () => {
+    useRunTraceMock.mockReturnValue({
+      data: { ...TRACE, prompt_assembly: { ...TRACE.prompt_assembly, specs: null }, specs_read: [] },
+      isLoading: false,
+    });
+    renderWithIntl(<RunTraceDrawer runId="r1" agentName="Security" prNumber={482} onClose={() => {}} />);
+
+    expect(screen.getByText("none")).toBeInTheDocument();
+    fireEvent.click(screen.getByText("Prompt assembly"));
+    expect(screen.queryByText("Project context — attached specs (untrusted)", { exact: false })).not.toBeInTheDocument();
+  });
 });

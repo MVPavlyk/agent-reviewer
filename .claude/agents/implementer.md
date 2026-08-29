@@ -56,14 +56,30 @@ still spans multiple untouched packages, say so plainly in your report so the
 caller can choose to continue you or start a fresh instance with a handoff
 instead of resuming a long-growing one.
 
+Whatever the split, every fresh instance starts cold and re-derives the layout
+of what you just built. Measured on this pipeline, `grep`/`sed` dominates every
+downstream agent's tool use — verifiers and reviewers spend 20-48 shell calls
+re-finding anchors an earlier report could simply have named. That is why the
+report ends with an `## Якорі` section: a handful of `path:line` points that the
+next implementer, the verifier, or the architecture reviewer would otherwise
+hunt for. It costs you three lines and saves them a dozen turns.
+
 ## Turn budget
 
 Even a phase scoped to ~5 steps can exhaust `maxTurns` on reads, edits, and
 per-step typecheck runs before you reach the final test pass and report — a
 run that stops mid-step with no report and no verification output is a worse
 outcome than one split across two calls, because the caller can't tell what
-actually landed. Track your budget as you go. Once you're past roughly 80% of
-`maxTurns`, stop opening new files or starting new steps: run whatever
+actually landed.
+
+You cannot read `maxTurns`, so "80% of the budget" is not something you can
+compute — count your own turns instead. Measured on real runs of this pipeline:
+calls that finished cleanly ran **64-122 turns**; the two that died mid-work
+without a report were at **135 and 139**. Treat **~90 turns** as the line where
+you stop expanding scope, and note that a step averages 20-35 turns, so if you
+are at 90 with more than one step left you will not make it.
+
+Once you are past that line, stop opening new files or starting new steps: run whatever
 verification the completed steps allow, and write the report now — mark
 unfinished steps `not started`/`partial` with the reason, rather than running
 out silently. If you hit this while steps remain, say so plainly in "Передано
@@ -215,6 +231,14 @@ $ pnpm exec vitest run --exclude '**/*.it.test.ts'
 
 ## Відхилення від плану
 <що зробив інакше і чому; "немає", якщо немає>
+
+## Якорі
+<кожен рядок — `path:line` + 3-6 слів, що там тепер є. Точки, які знадобляться
+наступному викликові або рев'юерові: місце вставки, нова публічна функція,
+змінений літерал, точка реєстрації модуля. Не перелічуй кожен рядок дифу —
+лише те, що інакше довелося б шукати грепом.>
+- `server/src/modules/x/service.ts:162` — `requireDocPath`, валідація шляху
+- `server/src/platform/container.ts:129` — геттер `xRepo`
 
 ## Передано далі
 - Архітектурне рев'ю: <точки уваги>

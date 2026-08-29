@@ -46,6 +46,7 @@
     "tabs": {
       "config": "Config",
       "skills": "Skills",
+      "context": "Context",
       "evals": "Evals",
       "stats": "Stats",
       "ci": "CI"
@@ -92,6 +93,11 @@
     "enabledCount": "{linked} of {total} enabled",
     "filterPlaceholder": "Filter skills…",
     "orderHint": "Order matters — earlier skills appear earlier in the assembled prompt. Toggle to attach."
+  },
+  "context": {
+    "title": "Context",
+    "loadError": "Could not load this agent's context documents.",
+    "orderHint": "Documents inherited from this agent's enabled skills come first, in skill order, and can't be reordered here — your own picks follow and can be reordered."
   },
   "mount": {
     "body": "Mount point for {owner}. The Agent Editor shell + tab routing are wired by A2 — {owner} renders this tab."

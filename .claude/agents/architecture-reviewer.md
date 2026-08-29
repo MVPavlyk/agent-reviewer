@@ -77,6 +77,26 @@ advice:
    instead of re-reporting it as a violation.
 4. The actual code.
 
+## When a change establishes an invariant, check every entry point
+
+Boundaries fail at the door nobody thought about. When the diff introduces or
+tightens a rule — a validation that must run before a write, a guard on a path
+resolved from user input, a check that a resource is in-bounds — the useful
+question is not "is this rule correct here" but **"which other call sites touch
+the same resource, and do they go through it too?"**
+
+Find them by the resource, not by the diff: grep for the other callers of the
+function, the other routes that take the same parameter, the other places that
+join a path against the same root. A rule enforced on two of three doors is
+usually worse than one enforced nowhere, because the two make everyone believe
+the invariant holds.
+
+A real case from this pipeline: a fix added a roots check on the write path and
+the run path, and a preview endpoint in the same service kept its own older
+validation and was missed — by the fix, by its own author, and by the
+structural verifier, which had been pointed at the two paths the fix named.
+The gap was visible only from asking who else reads that resource.
+
 ## Evidence discipline
 
 - Every finding carries a `path:line` and a verbatim excerpt (1–15 lines).

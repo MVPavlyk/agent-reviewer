@@ -142,6 +142,26 @@ export const PrHistory = z.object({
 });
 export type PrHistory = z.infer<typeof PrHistory>;
 
+// ---- Brief Core (PR Brief LLM output) — the subset PrBriefCard renders ----
+export const RiskLevel = z.enum(['low', 'medium', 'high']);
+export type RiskLevel = z.infer<typeof RiskLevel>;
+
+export const ReviewFocusItem = z.object({
+  file: z.string(),
+  line: z.number().int().nullable(),
+  reason: z.string(),
+});
+export type ReviewFocusItem = z.infer<typeof ReviewFocusItem>;
+
+export const BriefCore = z.object({
+  what: z.string(),
+  why: z.string(),
+  risk_level: RiskLevel,
+  risks: z.array(Risk),
+  review_focus: z.array(ReviewFocusItem),
+});
+export type BriefCore = z.infer<typeof BriefCore>;
+
 // ---- Smart Diff ----
 export const SmartDiffRole = z.enum(['core', 'wiring', 'boilerplate']);
 export type SmartDiffRole = z.infer<typeof SmartDiffRole>;
@@ -178,10 +198,10 @@ export const SmartDiff = z.object({
 export type SmartDiff = z.infer<typeof SmartDiff>;
 
 // ---- Composed PR Brief (pr_brief.json) ----
-export const PrBrief = z.object({
-  intent: Intent,
-  blast: BlastRadius,
-  risks: Risks,
-  history: PrHistory,
-});
+/** UI-only subset: `PrBriefCard` never reads `intent`/`blast`/`history`
+ *  (those are `IntentCard`/`BlastRadiusCard`'s own data), so unlike the
+ *  server's `PrBrief` this mirrors `BriefCore` directly — no drift risk since
+ *  it's a strict subset of the server response's fields (root CLAUDE.md
+ *  vendor-drift rule: mirror only what the UI needs). */
+export const PrBrief = BriefCore;
 export type PrBrief = z.infer<typeof PrBrief>;

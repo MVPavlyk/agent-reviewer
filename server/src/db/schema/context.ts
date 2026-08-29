@@ -9,9 +9,13 @@ import {
   vector,
   index,
   uniqueIndex,
+  primaryKey,
 } from 'drizzle-orm/pg-core';
 import { workspaces } from './core';
 import { repos } from './repos';
+import { agents } from './agents';
+import { skills } from './skills';
+import { agentRuns } from './runs';
 
 // ============================================================ Context & codebase
 
@@ -124,3 +128,63 @@ export const onboarding = pgTable('onboarding', {
   json: jsonb('json').notNull(),
   generatedAt: timestamp('generated_at', { withTimezone: true }).defaultNow().notNull(),
 });
+
+// ============================================================ Project context docs
+//
+// SPEC-01 A-1: these tables store PATH + ORDER only — deliberately NO
+// `repo_id` and NO content column. The repo a path resolves against is
+// always the PR's own clone at review time, re-read from disk; the doc list
+// (`GET /repos/:repoId/context-docs`) is a live scan, not a persisted index.
+// This is the approved model, not an oversight — see 30-plan.md §3 "Do not
+// touch" / "Готово, коли" for Крок 3.
+
+/** Documents attached directly to an agent (SPEC-01 AC-12). */
+export const agentContextDocs = pgTable(
+  'agent_context_docs',
+  {
+    agentId: uuid('agent_id')
+      .notNull()
+      .references(() => agents.id, { onDelete: 'cascade' }),
+    path: text('path').notNull(),
+    order: integer('order').notNull().default(0),
+  },
+  (table) => [
+    primaryKey({ columns: [table.agentId, table.path] }),
+    // Backs usedByAgents() (SPEC-01 AC-11) — PostgreSQL doesn't index FK
+    // columns automatically, and (agent_id, path) as PK doesn't cover a
+    // `WHERE path = ?` scan across agents.
+    index('agent_context_docs_path_idx').on(table.path),
+  ],
+);
+
+/** Documents attached to a skill; inherited by every agent that has the
+ *  skill enabled (SPEC-01 AC-13). */
+export const skillContextDocs = pgTable(
+  'skill_context_docs',
+  {
+    skillId: uuid('skill_id')
+      .notNull()
+      .references(() => skills.id, { onDelete: 'cascade' }),
+    path: text('path').notNull(),
+    order: integer('order').notNull().default(0),
+  },
+  (table) => [
+    primaryKey({ columns: [table.skillId, table.path] }),
+    index('skill_context_docs_path_idx').on(table.path),
+  ],
+);
+
+/** Attribution: which context docs were actually read into a given run's
+ *  prompt (SPEC-01 AC-34) — the context-docs analogue of `run_skills`. */
+export const runContextDocs = pgTable(
+  'run_context_docs',
+  {
+    runId: uuid('run_id')
+      .notNull()
+      .references(() => agentRuns.id, { onDelete: 'cascade' }),
+    path: text('path').notNull(),
+    contentHash: text('content_hash'),
+    source: text('source', { enum: ['agent', 'skill'] }).notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.runId, table.path] })],
+);

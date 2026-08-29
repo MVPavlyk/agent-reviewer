@@ -1,6 +1,6 @@
 import type { Db } from '../../db/client.js';
 import * as t from '../../db/schema.js';
-import type { Finding, PrIntentRecord, RunSummary, RunTrace } from '@devdigest/shared';
+import type { Finding, PrBriefRecord, PrIntentRecord, RunSummary, RunTrace } from '@devdigest/shared';
 
 /**
  * A2 — review data-access. The ONLY layer touching the DB for the review
@@ -22,7 +22,8 @@ import * as reviewRepo from './repository/review.repo.js';
 import * as runRepo from './repository/run.repo.js';
 import * as pullRepo from './repository/pull.repo.js';
 export type { UpsertIntentInput } from './repository/pull.repo.js';
-import type { UpsertIntentInput } from './repository/pull.repo.js';
+import type { UpsertIntentInput, UpsertBriefInput } from './repository/pull.repo.js';
+export type { UpsertBriefInput } from './repository/pull.repo.js';
 
 export class ReviewRepository {
   constructor(private db: Db) {}
@@ -135,6 +136,16 @@ export class ReviewRepository {
 
   getIntent(prId: string): Promise<PrIntentRecord | undefined> {
     return pullRepo.getIntent(this.db, prId);
+  }
+
+  // ---- brief ----------------------------------------------------------
+
+  upsertBrief(prId: string, input: UpsertBriefInput): Promise<void> {
+    return pullRepo.upsertBrief(this.db, prId, input);
+  }
+
+  getBrief(prId: string): Promise<PrBriefRecord | undefined> {
+    return pullRepo.getBrief(this.db, prId);
   }
 
   // ---- observability: agent_runs + run_traces ----------------------------

@@ -26,6 +26,11 @@ const EnvSchema = z.object({
   // Note: even when on, sections only populate once the repo is indexed; an
   // unindexed repo degrades gracefully. Per-agent override: agents.repo_intel.
   REPO_INTEL_ENABLED: z.string().optional(),
+  // Project context docs (SPEC-01): comma-separated top-level directory names
+  // scanned for attachable `.md` files in a repo's clone. Default covers the
+  // three canonical roots; operators may add/replace via env. Each segment is
+  // a single relative path component — no '/', '\', or '..' (see loadConfig).
+  CONTEXT_DOC_ROOTS: z.string().optional(),
   API_PORT: z.coerce.number().int().default(3001),
   WEB_PORT: z.coerce.number().int().default(3000),
   DEVDIGEST_CLONE_DIR: z.string().optional(),
@@ -59,7 +64,28 @@ export type AppConfig = {
    * EXACTLY like the ripgrep-only baseline.
    */
   repoIntelEnabled: boolean;
+  /**
+   * Top-level directory names (relative to a repo's clone root) scanned for
+   * attachable `.md` context docs. Default `['specs', 'docs', 'insights']`.
+   */
+  contextDocRoots: string[];
 };
+
+const DEFAULT_CONTEXT_DOC_ROOTS = ['specs', 'docs', 'insights'];
+
+/** A root segment must be a single relative path component. */
+function isValidContextDocRoot(segment: string): boolean {
+  return segment.length > 0 && !segment.includes('/') && !segment.includes('\\') && segment !== '..';
+}
+
+function parseContextDocRoots(raw: string | undefined): string[] {
+  if (raw === undefined) return DEFAULT_CONTEXT_DOC_ROOTS;
+  const roots = raw
+    .split(',')
+    .map((s) => s.trim())
+    .filter(isValidContextDocRoot);
+  return roots.length > 0 ? roots : DEFAULT_CONTEXT_DOC_ROOTS;
+}
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const parsed = EnvSchema.parse(env);
@@ -77,5 +103,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     webOrigin: `http://localhost:${parsed.WEB_PORT}`,
     embeddingsEnabled: parsed.EMBEDDINGS_ENABLED === 'true',
     repoIntelEnabled: parsed.REPO_INTEL_ENABLED !== 'false',
+    contextDocRoots: parseContextDocRoots(parsed.CONTEXT_DOC_ROOTS),
   };
 }

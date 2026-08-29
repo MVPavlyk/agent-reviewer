@@ -1,6 +1,6 @@
 ---
 name: agents-curator
-description: Keeps .claude/agents/README.md (the agent map for researcher/planner/implementer) in sync with reality. Use once a skill under .claude/skills/*/SKILL.md is finished — created for the first time, or an existing one's frontmatter (name/description) or scope changed on purpose — not on every intermediate edit while skill-creator is still drafting or running evals. Also triggered by "update agents README", "sync the agent roster", "/agents-curator". Re-reads .claude/agents/*.md frontmatter and .claude/skills/*/SKILL.md frontmatter and corrects any table in README.md that has drifted; flags judgment calls (e.g. "should this new skill be preloaded by implementer?") instead of deciding them. Does not edit agent files, does not duplicate agent prompt bodies or skill-routing tables into README. Does not write INSIGHTS.md entries (see engineering-insights) or docs/features/*.md (see feature-docs) — this skill only touches .claude/agents/README.md.
+description: Keeps .claude/agents/README.md (the agent map for researcher/implementation-planner/implementer) in sync with reality. Use once a skill under .claude/skills/*/SKILL.md is finished — created for the first time, or an existing one's frontmatter (name/description) or scope changed on purpose — not on every intermediate edit while skill-creator is still drafting or running evals. Also triggered by "update agents README", "sync the agent roster", "/agents-curator". Re-reads .claude/agents/*.md frontmatter and .claude/skills/*/SKILL.md frontmatter and corrects any table in README.md that has drifted; flags judgment calls (e.g. "should this new skill be preloaded by implementer?") instead of deciding them. Does not edit agent files, does not duplicate agent prompt bodies or skill-routing tables into README. Does not write INSIGHTS.md entries (see engineering-insights) or docs/features/*.md (see feature-docs) — this skill only touches .claude/agents/README.md.
 ---
 
 # Agents Curator
@@ -53,7 +53,7 @@ untouched — this is a sync pass, not a rewrite.
 
 ## What is a judgment call, not a sync — report, don't apply
 
-- A new skill looks relevant to `planner` or `implementer` but isn't in their
+- A new skill looks relevant to `implementation-planner` or `implementer` but isn't in their
   `skills:` list yet. This changes the agent's preload token budget and is a
   deliberate choice (see README's own "why these" column) — do not add it to
   the agent's frontmatter yourself. Say so as a suggestion.
@@ -68,7 +68,7 @@ untouched — this is a sync pass, not a rewrite.
 - Never touch an agent's `skills:`, `tools`, `model`, or any other frontmatter
   — this skill only edits `README.md`.
 - Never duplicate an agent's system-prompt body, or the skill-routing tables
-  that live inside `planner.md` / `implementer.md`, into README — README
+  that live inside `implementation-planner.md` / `implementer.md`, into README — README
   stays a map by design; that boundary is not this skill's to relax.
 - If `.claude/agents/README.md` doesn't exist yet, stop and say so. Don't
   create one from scratch — its structure was hand-designed and this skill

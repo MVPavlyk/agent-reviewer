@@ -15,6 +15,7 @@ import {
   Settings,
   Repo,
   PrDetail,
+  PrBriefRecord,
 } from '@devdigest/shared';
 
 /**
@@ -118,6 +119,49 @@ describe('AI contracts parse fixtures', () => {
             notes: 'n',
           },
         ],
+      }),
+    ).not.toThrow();
+  });
+
+  it('PrBriefRecord (AC-27)', () => {
+    expect(() =>
+      PrBriefRecord.parse({
+        what: 'Rotates the Stripe secret key.',
+        why: 'The old key leaked in a support ticket.',
+        risk_level: 'high',
+        risks: [
+          {
+            kind: 'security',
+            title: 'Key rotation window',
+            explanation: 'Old key stays valid until propagation completes.',
+            severity: 'high',
+            file_refs: ['src/config.ts'],
+          },
+        ],
+        review_focus: [{ file: 'src/config.ts', line: 12, reason: 'new key assignment' }],
+        intent: { summary: 'Rotates secret', in_scope: ['secret rotation'], out_of_scope: [] },
+        blast: {
+          changed_symbols: [],
+          downstream: [],
+          summary: 'low impact',
+          status: 'ok',
+          reason: null,
+          message: '',
+          coverage: {
+            changed_files: [],
+            analyzed_files: [],
+            unsupported_files: [],
+            files_without_rank: [],
+            indexer_version: null,
+            last_indexed_sha: null,
+          },
+          head_sha: 'deadbeef',
+        },
+        pr_id: 'pr-1',
+        provider: 'openai',
+        model: 'gpt-4.1',
+        generated_at: '2026-03-18T00:00:00.000Z',
+        source_updated_at: '2026-03-18T00:00:00.000Z',
       }),
     ).not.toThrow();
   });
