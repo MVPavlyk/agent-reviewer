@@ -1,0 +1,59 @@
+# devdigest-workflow-version: 2
+name: DevDigest Review
+permissions:
+  contents: read
+  pull-requests: write
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (actions/checkout v4)
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Set up Node.js (actions/setup-node v4)
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "20"
+      - name: Run DevDigest review
+        run: node .devdigest/runner/index.js
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          DEVDIGEST_POST_AS: pr_comment
+      - name: DevDigest summary
+        if: always()
+        run: >-
+          if [ -f devdigest-result.json ]; then
+            {
+              echo "## DevDigest review"
+              echo ""
+              jq -r '"- Agent: \(.agent)\n- Findings: \(.findings_count)\n- Critical: \(.critical // 0) · Warning: \(.warning // 0) · Suggestion: \(.suggestion // 0)\n- Cost: $\(.cost_usd)"' devdigest-result.json
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "DevDigest produced no result artifact." >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Report result to DevDigest
+        if: always()
+        env:
+          DEVDIGEST_INGEST_URL: ${{ vars.DEVDIGEST_INGEST_URL || 'http://localhost:3001' }}
+          DEVDIGEST_INGEST_TOKEN: ${{ secrets.DEVDIGEST_INGEST_TOKEN }}
+          DEVDIGEST_COMMIT_SHA: ${{ github.sha }}
+          DEVDIGEST_REPOSITORY: ${{ github.repository }}
+        run: >-
+          if [ -f devdigest-result.json ]; then
+            curl -sS -f -X POST "$DEVDIGEST_INGEST_URL/ci/ingest" \
+              -H "Authorization: Bearer $DEVDIGEST_INGEST_TOKEN" \
+              -H "Content-Type: application/json" \
+              -H "X-Devdigest-Commit-Sha: $DEVDIGEST_COMMIT_SHA" \
+              -H "X-Devdigest-Repository: $DEVDIGEST_REPOSITORY" \
+              --data-binary @devdigest-result.json \
+              || echo "::warning::DevDigest ingest failed — CI Runs not updated (is DEVDIGEST_INGEST_URL reachable from the runner?)"
+          else
+            echo "No devdigest-result.json produced; skipping ingest."
+          fi

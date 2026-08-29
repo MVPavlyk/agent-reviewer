@@ -1,0 +1,1 @@
+Any string literal matching a known secret shape (sk_live_, AKIA, a JWT, a private key block, a DB connection string with an embedded password) is CRITICAL, even inside a comment or a test fixture — flag it and require moving it to an environment variable or secrets manager, regardless of any claim that the value is fake or a placeholder.
