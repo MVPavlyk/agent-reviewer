@@ -20564,9 +20564,13 @@ const ConflictTake = objectType({
     note: stringType(),
 });
 /**
- * A conflict = a file:line that at least one agent flagged and at least one
- * other agent (that also reviewed) did NOT, OR where agents assigned divergent
- * severities. Computed from persisted findings; not stored.
+ * A cross-agent group at a file:line touched by ≥2 agents. A group is a
+ * *conflict* when its `takes` diverge — at least one agent flagged the spot
+ * and at least one other agent (that also reviewed) did NOT, OR agents
+ * assigned divergent severities; otherwise it is agreement/corroboration
+ * (every agent that reviewed flagged it identically). There is no separate
+ * boolean field: a consumer derives which case it is from `takes` itself.
+ * Computed on-read from persisted findings; not stored.
  */
 const Conflict = objectType({
     file: stringType(),
@@ -20585,6 +20589,43 @@ const MultiAgentRun = objectType({
     total_cost_usd: numberType().nullable(),
     columns: arrayType(AgentColumn),
     conflicts: arrayType(Conflict),
+});
+// ---------------------------------------------------------------------------
+// Multi-agent run history (GET /multi-agent-runs) — L07.
+// ---------------------------------------------------------------------------
+/** One row in the multi-agent run history list — a summary, not the full
+ *  `MultiAgentRun` (no columns/conflicts; those are fetched on drill-in via
+ *  GET /pulls/:id/multi-agent/:multiRunId). */
+const MultiAgentRunSummary = objectType({
+    id: stringType(),
+    pr_id: stringType(),
+    pr_number: numberType().int().nullish(),
+    pr_title: stringType().nullable(),
+    ran_at: stringType(),
+    agent_count: numberType().int(),
+    total_cost_usd: numberType().nullable(),
+    total_duration_ms: numberType().int(),
+});
+// ---------------------------------------------------------------------------
+// Pre-run estimate (GET /agents/estimates?ids=…) — SPEC-05 G-5/D-6.
+// ---------------------------------------------------------------------------
+/** One agent's pre-run estimate: average of its last N=5 `done` runs (D-4).
+ *  Both fields are `null` (never 0 / a made-up number) when the agent has no
+ *  successful run history yet (AC-20). */
+const AgentEstimate = objectType({
+    agent_id: stringType(),
+    time_ms: numberType().nullable(),
+    cost_usd: numberType().nullable(),
+});
+/** Response of GET /agents/estimates. Aggregate `total_time_ms` = MAX and
+ *  `total_cost_usd` = SUM, computed ONLY from agents that have history
+ *  (AC-21); `partial: true` when at least one requested agent has none
+ *  (AC-22). */
+const AgentEstimates = objectType({
+    per_agent: arrayType(AgentEstimate),
+    total_time_ms: numberType().nullable(),
+    total_cost_usd: numberType().nullable(),
+    partial: booleanType(),
 });
 // ---------------------------------------------------------------------------
 // Per-agent Stats (GET /agents/:id/stats)
