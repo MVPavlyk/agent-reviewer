@@ -75,6 +75,13 @@ testability payoff, already working, just not yet named or enforced outside
   `container.ts` as composition root, testing via `ContainerOverrides`
 - [rules/vertical-slices.md](rules/vertical-slices.md) — reconciling Onion
   rings with this repo's module-per-Fastify-plugin convention
+- [rules/cross-module-boundaries.md](rules/cross-module-boundaries.md) — the
+  same dependency-direction rule applied sideways: a module reaching into a
+  sibling module's `repository.ts` instead of its `service.ts`
+- [rules/port-ownership.md](rules/port-ownership.md) — *where* a port
+  interface is declared, not just whether one exists; a service can be
+  fully constructor-injected and still depend on an adapter's file for its
+  own contract's shape
 - [rules/enforcement.md](rules/enforcement.md) — wiring `dependency-cruiser`
   (already a `server/` dependency) to lint the rule in CI, not just by review
 - [examples.md](examples.md) — before/after diffs

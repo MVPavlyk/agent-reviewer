@@ -1,11 +1,20 @@
 import { describe, it, expect, afterEach, vi } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { NextIntlClientProvider } from "next-intl";
 import type { FindingRecord } from "@devdigest/shared";
 import messages from "../../../../../../../../messages/en/prReview.json";
+import { ToastProvider } from "@/lib/toast";
 
 vi.mock("../../../../../../../lib/hooks/reviews", () => ({
   useFindingAction: () => ({ mutate: vi.fn(), isPending: false }),
+}));
+
+// FindingCard (rendered by FindingsPanel) uses the "Turn into eval case"
+// mutation — mock the concrete module, not the `@/lib/hooks` barrel
+// (client/INSIGHTS.md 2026-08-11).
+vi.mock("../../../../../../../lib/hooks/evals", () => ({
+  useCreateEvalCaseFromFinding: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 
 import { FindingsPanel } from "./FindingsPanel";
@@ -52,10 +61,13 @@ const FINDINGS: FindingRecord[] = [
 ];
 
 function renderWithIntl(ui: React.ReactElement) {
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
-    <NextIntlClientProvider locale="en" messages={{ prReview: messages }}>
-      {ui}
-    </NextIntlClientProvider>,
+    <QueryClientProvider client={qc}>
+      <NextIntlClientProvider locale="en" messages={{ prReview: messages }}>
+        <ToastProvider>{ui}</ToastProvider>
+      </NextIntlClientProvider>
+    </QueryClientProvider>,
   );
 }
 

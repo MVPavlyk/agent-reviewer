@@ -60,3 +60,20 @@ export {
 // The single OpenAI-compatible structured provider (OpenRouter), shared by the
 // CI runner and the server's openrouter path. Owns session grouping + guards.
 export { OpenRouterProvider, type OpenRouterProviderOptions } from './llm/openrouter.js';
+
+// Eval scoring (SPEC-05) — deterministic (non-LLM) match rule + TP/FN/FP/TN
+// classification and aggregate metrics. Pure: no DB/HTTP/fs/LLM import here.
+export {
+  match,
+  normalizePath,
+  score,
+  type MatchTarget,
+  type ExpectedFinding,
+  type SourceFindingZone,
+  type EvalCaseKind,
+  type EvalCaseClassification,
+  type EvalCaseScoreInput,
+  type EvalCaseScoreResult,
+  type ScoreInput,
+  type ScoreResult,
+} from './eval/index.js';

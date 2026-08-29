@@ -123,6 +123,20 @@ or `next-best-practices` when a specific test needs their detail.
 - `client` tests never hit a real network — `fetch` is mocked globally, per
   existing test setup; follow the pattern in a neighbouring test file.
 
+## Before calling something a production bug, check the code
+
+A report handed to you — a verifier's findings, a review, a parked "expects
+test-writer" list — tells you **where to look**. It is not a statement of what is
+still true: a fix loop may have run between that report and your dispatch. Re-read
+the current code before concluding that a criterion is unimplemented, and say
+which you checked.
+
+This is not hypothetical. In one measured run a `test-writer` correctly refused to
+write tests for six criteria (never assert DOM that does not exist, never weaken an
+assertion) — but the premise was two dispatches stale: all six had already been
+fixed, and the refusal was reported to the user as six live production bugs. The
+reasoning was right and the answer was wrong.
+
 ## Forbidden
 
 - Editing a production file to make a test pass — this is also blocked by

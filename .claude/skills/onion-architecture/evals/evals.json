@@ -1,0 +1,74 @@
+{
+  "skill_name": "onion-architecture",
+  "evals": [
+    {
+      "id": 1,
+      "name": "notifications-service",
+      "prompt": "Review server/src/modules/notifications/service.ts (attached below) for architectural problems. This is meant to be an application-layer service file in a Fastify + Drizzle backend. List each issue you find, with a brief explanation of why it's a problem. Don't fix the code, just report findings.",
+      "expected_output": "Findings should call out: (1) a service function taking FastifyRequest/FastifyReply directly, (2) direct Drizzle db/schema queries inside the service instead of behind a repository, (3) a concrete Octokit client constructed inline instead of injected via an interface.",
+      "files": ["evals/fixtures/case-1-notifications-service/service.ts"],
+      "expectations": [
+        "Flags markNotificationSeen taking FastifyRequest/FastifyReply as parameters, coupling business logic to the Fastify framework",
+        "Flags the direct db.select/db.update Drizzle calls inside service.ts instead of going through a repository abstraction",
+        "Flags postDigestToGithub instantiating `new Octokit(...)` directly instead of depending on an injected client/interface"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "reviewer-core-summary-purity",
+      "prompt": "Review reviewer-core/src/review/summarize.ts (attached below) for architectural problems. reviewer-core is supposed to be a pure engine with no filesystem, network, or environment access, and LLM calls should go through an LLMProvider interface/adapter. List each issue you find, with a brief explanation.",
+      "expected_output": "Findings should call out: (1) readFileSync (node:fs) used directly in core logic, (2) process.env read directly in core logic, (3) a raw fetch() call to the OpenRouter API instead of going through an LLMProvider interface.",
+      "files": ["evals/fixtures/case-2-reviewer-core-summary/summarize.ts"],
+      "expectations": [
+        "Flags readFileSync / node:fs usage as a purity violation for reviewer-core",
+        "Flags process.env.OPENROUTER_API_KEY access as a purity violation for reviewer-core",
+        "Flags the direct fetch() call to openrouter.ai as bypassing the LLMProvider interface/adapter"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "labels-routes-business-logic",
+      "prompt": "Review server/src/modules/labels/routes.ts, domain.ts, and repository.ts (attached below) for architectural problems in this Fastify + Drizzle module. List each issue you find, with a brief explanation.",
+      "expected_output": "Findings should call out: (1) scoring/business logic implemented inline in the route handler instead of a service, (2) domain.ts importing a Drizzle-inferred row type from repository.ts, (3) routes.ts calling the repository directly with no service layer in between.",
+      "files": [
+        "evals/fixtures/case-3-labels-routes/routes.ts",
+        "evals/fixtures/case-3-labels-routes/domain.ts",
+        "evals/fixtures/case-3-labels-routes/repository.ts"
+      ],
+      "expectations": [
+        "Flags the score calculation logic living inside the Fastify route handler instead of an application/service layer",
+        "Flags domain.ts importing LabelRow (a `typeof labels.$inferSelect` Drizzle type) from repository.ts, coupling the domain type to infrastructure",
+        "Flags routes.ts calling getLabelRow (the repository) directly, with no service/use-case layer between the route and the repository"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "pulls-cross-module-repository",
+      "prompt": "Review server/src/modules/pulls/service.ts (attached below) for architectural problems in this Fastify + Drizzle module. List each issue you find, with a brief explanation.",
+      "expected_output": "Findings should call out: (1) direct Drizzle db queries inside service.ts instead of behind pulls' own repository, (2) evaluateAutoMerge importing getRepoConfig straight from the repos module's repository.ts instead of going through repos' service.ts, (3) the same function importing getReviewSettings straight from the settings module's repository.ts instead of going through settings' service.ts.",
+      "files": ["evals/fixtures/case-4-pulls-cross-module/service.ts"],
+      "expectations": [
+        "Flags the direct db.select/db.update Drizzle calls inside service.ts instead of going through pulls' own repository abstraction",
+        "Flags getRepoConfig being imported from ../repos/repository (a sibling module's repository) instead of ../repos/service — reaching into another module's private persistence layer",
+        "Flags getReviewSettings being imported from ../settings/repository (a sibling module's repository) instead of ../settings/service — the same cross-module boundary violation a second time"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "agents-notifications-port-ownership",
+      "prompt": "Review server/src/modules/agents/service.ts, repository.ts, and adapters/notifications/slack-adapter.ts (attached below) for architectural problems in this Fastify + Drizzle module. Note that most of the dependency injection in this file is done correctly — don't assume everything is wrong. List each issue you find, with a brief explanation.",
+      "expected_output": "Findings should call out: (1) the NotificationSender interface being declared inside slack-adapter.ts and imported by service.ts from the adapter's own file path instead of a neutral/shared location, (2) escalateFailure constructing `new SlackNotificationSender(...)` directly instead of using the already-injected this.notifications, (3) escalateFailure querying Drizzle (db.select on agentRuns) directly inside service.ts instead of through the repository. Should NOT flag the constructor injection of Container/NotificationSender, or the correct usage of this.container.llmProvider / this.notifications.send elsewhere in the file, as violations.",
+      "files": [
+        "evals/fixtures/case-5-agents-notifications/service.ts",
+        "evals/fixtures/case-5-agents-notifications/repository.ts",
+        "evals/fixtures/case-5-agents-notifications/slack-adapter.ts"
+      ],
+      "expectations": [
+        "Flags NotificationSender being declared in slack-adapter.ts (the adapter/implementation) and imported by service.ts from that file, instead of from a neutral shared location owned by the consumer",
+        "Flags escalateFailure constructing `new SlackNotificationSender(...)` directly instead of reusing the already-injected `this.notifications`",
+        "Flags the db.select(...).from(agentRuns) Drizzle call inside escalateFailure as bypassing the repository",
+        "Does not flag the constructor-injected Container/NotificationSender pattern itself, or this.container.llmProvider.summarize(...) / this.notifications.send(...) in startRun, as violations"
+      ]
+    }
+  ]
+}

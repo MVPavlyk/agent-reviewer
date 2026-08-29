@@ -24,6 +24,7 @@ export const NAV: NavGroup[] = [
     items: [
       { key: "skills", label: "Skills", icon: "Sparkles", href: "/skills", gKey: "s" },
       { key: "conventions", label: "Conventions", icon: "ListChecks", href: "/conventions", gKey: "c" },
+      { key: "evals", label: "Eval Dashboard", icon: "Target", href: "/evals" },
     ],
   },
   {

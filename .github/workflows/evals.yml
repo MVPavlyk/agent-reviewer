@@ -1,0 +1,176 @@
+# evals — see evals/README.md for the three-tier design, and CLAUDE.md's
+# "Eval routing" table for which change type needs which check.
+#
+# Two jobs, deliberately split by trust level:
+#   - quality: the static gate (no model, no network) — blocking, runs for
+#     EVERY push/PR including forks, since it needs no secret.
+#   - model-report: real model-tier runs (eval:benchmark, candidate vs
+#     baseline) for whichever skill/agent eval dirs actually changed —
+#     informational only (continue-on-error, never blocks merge), and NEVER
+#     runs on a fork PR (see the `if:` guard) because it needs a paid
+#     OPENROUTER_API_KEY secret and a fork PR must never see repo secrets.
+#
+# This repo's evals default to the interactive Claude Code subscription login
+# (see evals/src/runtime/env.ts — `subscriptionEnv()` actively STRIPS
+# ANTHROPIC_API_KEY), which has no CI equivalent. CI therefore MUST use
+# EVAL_BACKEND=openrouter instead — see evals/README.md's "Runners" section.
+# Before this job can do anything on a real PR, add an OPENROUTER_API_KEY
+# secret in repo Settings → Secrets and variables → Actions. Until that
+# secret exists, the job below still runs but every session will fail fast
+# with "OPENROUTER_API_KEY is not set" — that failure is swallowed by
+# continue-on-error, so it degrades to "no report posted", not a red PR.
+name: evals
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'evals/**'
+      - '.claude/skills/**'
+      - '.claude/agents/**'
+      - 'CLAUDE.md'
+      - '*/CLAUDE.md'
+      - '.github/workflows/evals.yml'
+  pull_request:
+    paths:
+      - 'evals/**'
+      - '.claude/skills/**'
+      - '.claude/agents/**'
+      - 'CLAUDE.md'
+      - '*/CLAUDE.md'
+      - '.github/workflows/evals.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: evals-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: eval:quality (static gate)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: evals
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: evals/pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm eval:quality
+
+  model-report:
+    name: model-tier report (non-blocking)
+    needs: quality
+    # Same-repo pushes/PRs only. A fork PR's head repo never equals
+    # github.repository, so this job (and its secret) never runs for one.
+    if: >
+      github.event_name == 'push' ||
+      (github.event_name == 'pull_request' &&
+       github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    continue-on-error: true
+    permissions:
+      contents: read
+      pull-requests: write
+    defaults:
+      run:
+        working-directory: evals
+    env:
+      EVAL_BACKEND: openrouter
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      # Cheap default — override per-repo by changing this env, not by editing the eval cases.
+      EVAL_MODEL: deepseek/deepseek-chat
+      EVAL_JUDGE_MODEL: deepseek/deepseek-chat
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: evals/pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+
+      # Budget guardrail: only benchmark the skill/agent eval dirs whose
+      # SKILL.md/agent .md OR whose evals/{skills,agents}/<name>/ actually
+      # changed in this diff — never the whole suite. Each dir found below
+      # costs (cases in that dir) x 2 configs (candidate+baseline) x 2 runs
+      # — see evals/src/records/benchmark.ts. Hard cap at 5 dirs so a change
+      # that touches many skills at once (e.g. a shared convention edit)
+      # degrades to "report skipped", not an unbounded bill.
+      - name: Find changed skill/agent eval targets
+        id: targets
+        run: |
+          BASE="${{ github.event_name == 'pull_request' && format('origin/{0}', github.event.pull_request.base.ref) || 'HEAD~1' }}"
+          CHANGED=$(git diff --name-only "$BASE"...HEAD -- .claude/skills .claude/agents evals/skills evals/agents 2>/dev/null || true)
+          DIRS=""
+          for f in $CHANGED; do
+            name=$(echo "$f" | sed -n \
+              -e 's#^\.claude/skills/\([^/]*\)/.*#skills/\1#p' \
+              -e 's#^\.claude/agents/\([^.]*\)\.md#agents/\1#p' \
+              -e 's#^evals/skills/\([^/]*\)/.*#skills/\1#p' \
+              -e 's#^evals/agents/\([^/]*\)/.*#agents/\1#p')
+            [ -n "$name" ] && DIRS="$DIRS $name"
+          done
+          DIRS=$(echo "$DIRS" | tr ' ' '\n' | sort -u | grep -v '^$' || true)
+          COUNT=$(echo "$DIRS" | grep -c . || true)
+          if [ "$COUNT" -eq 0 ] || [ "$COUNT" -gt 5 ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            echo "dirs<<EOF" >> "$GITHUB_OUTPUT"
+            echo "$DIRS" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Benchmark each changed target (candidate vs baseline)
+        if: steps.targets.outputs.skip == 'false'
+        run: |
+          mkdir -p /tmp/eval-reports
+          while IFS= read -r dir; do
+            [ -z "$dir" ] && continue
+            evalFile=$(find "$dir" -maxdepth 1 -name '*.eval.ts' | head -1)
+            [ -z "$evalFile" ] && continue
+            pnpm eval:benchmark "$evalFile" -n 2 --label "ci-$(basename "$dir")" || true
+          done <<< "${{ steps.targets.outputs.dirs }}"
+          # eval:benchmark writes each run's report under results/benchmarks/<timestamp>/benchmark.md
+          find results/benchmarks -name benchmark.md -newer pnpm-lock.yaml -exec cat {} \; > /tmp/eval-reports/combined.md 2>/dev/null || true
+
+      - name: Post report as a PR comment
+        if: steps.targets.outputs.skip == 'false' && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = '/tmp/eval-reports/combined.md';
+            const body = fs.existsSync(path) && fs.statSync(path).size > 0
+              ? fs.readFileSync(path, 'utf8')
+              : '_No eval report was produced (run failed or produced no output — check the job log)._';
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `### 🧪 Evals — model-tier report\n\n${body.slice(0, 60000)}`,
+            });

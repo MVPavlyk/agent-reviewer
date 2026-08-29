@@ -72,6 +72,9 @@ export function SeverityCounts({
         const n = countFor(counts, lvl);
         const isSelected = selected === lvl;
         const disabled = n === 0;
+        const label = isSelected
+          ? t("severityCounts.clearFilter")
+          : t("severityCounts.showOnly", { level: lvl });
         return (
           <button
             key={lvl}
@@ -79,11 +82,8 @@ export function SeverityCounts({
             disabled={disabled}
             onClick={() => onSelect?.(isSelected ? null : lvl)}
             aria-pressed={isSelected}
-            title={
-              isSelected
-                ? t("severityCounts.clearFilter")
-                : t("severityCounts.showOnly", { level: lvl })
-            }
+            aria-label={label}
+            title={label}
             style={{
               display: "inline-flex",
               alignItems: "center",
