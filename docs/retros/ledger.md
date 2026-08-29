@@ -7,11 +7,12 @@ human review time, rerun count, overlap window, merge conflicts) — never
 
 | Date | Fan-out | Agent tokens (out) | Wall-clock → green merge | Human review | Reruns | Overlap window | Merge conflicts |
 |---|---|---|---|---|---|---|---|
-| 2026-08-25 | A: Multi-Agent Review ∥ B: Export to CI | **A ≈ 1.24M** · B _pending_ | A ≈ single working session; exact ts not metered | low (≈8 decision points, no line review) | 3 (A) | WP1-fix ∥ WP2 (real) | 4 (expected) |
+| 2026-08-25 | A: Multi-Agent Review ∥ B: Export to CI | **A ≈ 1.24M · B ≈ 2.97M** (Σ ≈ 4.2M) | per-side single working session; exact ts not metered | low (no line review) | 3 (A); resumes present (B) | WP1-fix ∥ WP2 (A, real) | 4 (expected) |
 
-> B-side (`feat/export-to-ci`) numbers are **pending** — they live in the separate
-> session that built worktree B and were not available when this row was written.
-> Fill in from that session's transcript (`workflow-retro`) to complete the comparison.
+> Both sides now filled from their session transcripts. A-side measured live in
+> the merge/CI session; B-side (`feat/export-to-ci`) recovered from its session
+> transcript (`~/.claude/projects/…-devdigest-ci/9b3fc9a8-….jsonl`). Numbers are
+> **output tokens** summed per subagent completion; orchestrator tokens excluded.
 
 ## A-side detail (worktree A — Multi-Agent Review)
 
@@ -44,3 +45,22 @@ Notes on the measured qualitative metrics:
 - **Not metered precisely:** absolute wall-clock start→merge and human review minutes
   (no line-by-line human review; decisions were made at ~8 checkpoints). $-cost omitted
   deliberately — no fabricated per-token rate; tokens are the measured unit here.
+
+## B-side detail (worktree B — Export to CI)
+
+Source: the B session transcript
+(`~/.claude/projects/-Users-oyi-21-11-00075-WebstormProjects-devdigest-ci/9b3fc9a8-56e7-4c68-b61b-ed941259bee7.jsonl`),
+summing the `subagent_tokens` / `duration_ms` reported by each subagent completion
+(deduped — each task-notification is recorded twice in the transcript).
+
+- **Subagent dispatches:** 21 (spec + planner + ~8–9 implementer passes + reviews +
+  security + fixes — B was a larger fan-out than A).
+- **Output tokens (Σ):** ≈ 2,967,206 (~2.97M).
+- **Cumulative subagent wall-time:** ≈ 160.5 min (sum of per-agent `duration_ms`; not
+  wall-clock, since dispatches overlapped).
+- **Caveat:** a resumed agent reports a *cumulative* figure on each stop, so a
+  resume's base pass may be counted twice; 2.97M is therefore a mild **upper bound**,
+  not an exact floor. A full `workflow-retro` (grouping by agent id, final-value-per-agent)
+  would tighten it. Same methodology gives A ≈ 1.24M over 8 dispatches.
+
+**Combined fan-out (A + B):** ≈ 4.2M output tokens across 29 subagent dispatches.
