@@ -79,6 +79,17 @@ install_if_needed server
 # without its deps the API crashes at boot with ERR_MODULE_NOT_FOUND. It uses npm.
 [ -d reviewer-core/node_modules ] || { log "installing deps in reviewer-core"; (cd reviewer-core && npm ci); }
 
+# --- CI runner bundle (agent-runner) -----------------------------------------
+# The Export-to-CI feature reads a prebuilt agent-runner bundle
+# (agent-runner/dist/index.js). Build it if missing so `export-ci` works out of
+# the box instead of returning "runner not built". Idempotent: skipped once
+# built. Uses pnpm (agent-runner has its own pnpm-lock.yaml).
+if [ ! -f agent-runner/dist/index.js ]; then
+  install_if_needed agent-runner
+  log "building CI runner bundle (agent-runner)"
+  (cd agent-runner && pnpm build)
+fi
+
 # --- migrate + seed ----------------------------------------------------------
 log "applying migrations"
 (cd server && pnpm db:migrate)

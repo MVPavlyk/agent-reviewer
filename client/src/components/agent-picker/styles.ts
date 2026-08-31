@@ -1,0 +1,71 @@
+import type { CSSProperties } from "react";
+
+export const s = {
+  wrap: { display: "flex", flexDirection: "column", gap: 10 } satisfies CSSProperties,
+  header: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+  } satisfies CSSProperties,
+  list: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 6,
+    maxHeight: 360,
+    overflowY: "auto",
+  } satisfies CSSProperties,
+  row: (accent: string): CSSProperties => ({
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    padding: "10px 12px",
+    borderRadius: 7,
+    border: "1px solid var(--border)",
+    borderLeftWidth: 3,
+    borderLeftColor: accent,
+    background: "var(--bg-elevated)",
+  }),
+  rowLabel: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    minWidth: 0,
+    flex: 1,
+  } satisfies CSSProperties,
+  iconWrap: (accent: string): CSSProperties => ({
+    display: "grid",
+    placeItems: "center",
+    width: 26,
+    height: 26,
+    borderRadius: 6,
+    background: "var(--bg-hover)",
+    color: accent,
+    flexShrink: 0,
+  }),
+  main: {
+    flex: 1,
+    minWidth: 0,
+    display: "flex",
+    flexDirection: "column",
+    gap: 1,
+  } satisfies CSSProperties,
+  name: {
+    fontSize: 13.5,
+    fontWeight: 600,
+    color: "var(--text-primary)",
+  } satisfies CSSProperties,
+  blurb: {
+    fontSize: 12.5,
+    color: "var(--text-secondary)",
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+  } satisfies CSSProperties,
+  timeCost: {
+    fontSize: 12.5,
+    color: "var(--text-muted)",
+    flexShrink: 0,
+    textAlign: "right",
+  } satisfies CSSProperties,
+} as const;

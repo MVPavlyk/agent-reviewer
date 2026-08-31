@@ -12,6 +12,8 @@ import conventions from './conventions/routes.js';
 import blast from './blast/routes.js';
 import contextDocs from './context-docs/routes.js';
 import evals from './evals/routes.js';
+import multiAgent from './multi-agent/routes.js';
+import ci from './ci/routes.js';
 
 /**
  * Module registry. Each feature module is a Fastify plugin in
@@ -40,4 +42,6 @@ export const modules: Record<string, FastifyPluginAsync> = {
   blast,
   contextDocs,
   evals,
+  multiAgent,
+  ci,
 };

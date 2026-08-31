@@ -10,4 +10,5 @@ export { parseUnifiedDiff } from './git/diff-parser.js';
 export { RipgrepCodeIndex } from './codeindex/ripgrep.js';
 export { estimateCost } from './llm/pricing.js';
 export { HttpDocFetcher, DocFetchError } from './docfetcher/index.js';
+export { LocalRunnerBundle } from './runner-bundle/index.js';
 export * from './mocks.js';

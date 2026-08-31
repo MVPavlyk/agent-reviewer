@@ -134,6 +134,20 @@
       "when": 1787500414131,
       "tag": "0018_wooden_paladin",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1787596562845,
+      "tag": "0019_milky_giant_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1787640904935,
+      "tag": "0020_parched_triton",
+      "breakpoints": true
     }
   ]
 }

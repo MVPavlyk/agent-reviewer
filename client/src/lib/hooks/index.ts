@@ -84,6 +84,9 @@ export {
   useSetSkillContextDocs,
 } from "./context-docs";
 
+export { useRunMultiAgent, useMultiAgentRun, useMultiAgentRuns, useAgentEstimates } from "./multi-agent";
+export type { RunMultiAgentInput } from "./multi-agent";
+
 export {
   useAgentEvalCases,
   useAgentEvalBatches,
@@ -94,3 +97,6 @@ export {
   useCreateEvalCaseFromFinding,
 } from "./evals";
 export type { EvalDashboardAgentRow, EvalBatchPoll, StartBatchResult } from "./evals";
+
+export { useAgentCi, useExportCi, useCiRuns } from "./ci";
+export type { CiInstallationStatus } from "./ci";

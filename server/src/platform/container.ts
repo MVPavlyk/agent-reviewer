@@ -38,6 +38,9 @@ import { type DepGraph, DepCruiseGraph } from '../adapters/depgraph';
 import { type Tokenizer, TiktokenTokenizer } from '../adapters/tokenizer';
 import { FflateArchiveReader } from '../adapters/archive';
 import type { ArchiveReader } from '../modules/skills/import/types.js';
+import { CiRepository } from '../modules/ci/repository.js';
+import type { RunnerBundle } from '../modules/ci/service.js';
+import { LocalRunnerBundle } from '../adapters/runner-bundle';
 
 /**
  * DI container. One per app instance. Holds config, db, the JobRunner,
@@ -64,6 +67,9 @@ export interface ContainerOverrides {
   archive?: ArchiveReader;
   /** Intent Layer — plan/spec doc fetch behind SSRF guards. */
   docFetcher?: DocFetcher;
+  /** Export to CI (SPEC-05) — reads the built `agent-runner/dist/index.js`.
+   *  Tests inject a stub so they never need a real `dist/` on disk. */
+  runnerBundle?: RunnerBundle;
 }
 
 export class Container {
@@ -94,6 +100,8 @@ export class Container {
   private _priceBook?: PriceBook;
   private _archive?: ArchiveReader;
   private _docFetcher?: DocFetcher;
+  private _ciRepo?: CiRepository;
+  private _runnerBundle?: RunnerBundle;
 
   constructor(config: AppConfig, db: Db, private overrides: ContainerOverrides = {}) {
     this.config = config;
@@ -136,6 +144,19 @@ export class Container {
 
   get reviewRepo(): ReviewRepository {
     return (this._reviewRepo ??= new ReviewRepository(this.db));
+  }
+
+  get ciRepo(): CiRepository {
+    return (this._ciRepo ??= new CiRepository(this.db));
+  }
+
+  /** Export to CI (SPEC-05) — the built `agent-runner/dist/index.js`, read
+   *  from `config.runnerBundlePath`. Constructed ONLY here (AC-2); the
+   *  service depends on the `RunnerBundle` interface, never `fs` directly. */
+  get runnerBundle(): RunnerBundle {
+    if (this.overrides.runnerBundle) return this.overrides.runnerBundle;
+    this._runnerBundle ??= new LocalRunnerBundle(this.config.runnerBundlePath);
+    return this._runnerBundle;
   }
 
   get codeIndex(): CodeIndex {

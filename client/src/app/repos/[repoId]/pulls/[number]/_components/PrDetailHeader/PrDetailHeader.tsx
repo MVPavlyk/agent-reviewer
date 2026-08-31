@@ -1,8 +1,10 @@
 "use client";
 
 import React, { useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { Icon, Avatar, Badge, Button, Tabs } from "@devdigest/ui";
 import { RunReviewDropdown } from "../RunReviewDropdown";
+import { AgentMultiPicker } from "../AgentMultiPicker";
 import { s } from "./styles";
 import type { PrDetail } from "@/lib/types";
 
@@ -35,6 +37,8 @@ export function PrDetailHeader({
   const handleRunsStarted = useCallback(() => {
     onRunsStarted();
   }, [onRunsStarted]);
+
+  const router = useRouter();
 
   const statusColor =
     pr.status === "merged"
@@ -89,6 +93,17 @@ export function PrDetailHeader({
           >
             View on GitHub
           </Button>
+          {prId && (
+            <Button
+              kind="ghost"
+              size="sm"
+              icon="History"
+              onClick={() => router.push(`/multi-agent?prId=${prId}`)}
+            >
+              Multi-agent runs
+            </Button>
+          )}
+          {prId && <AgentMultiPicker prId={prId} />}
           {prId && (
             <RunReviewDropdown
               prId={prId}

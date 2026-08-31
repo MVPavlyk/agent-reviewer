@@ -226,8 +226,14 @@ export type CiFile = z.infer<typeof CiFile>;
 export const CiExportInput = z.object({
   repo: z.string().min(1), // "owner/name"
   target: CiTarget.default('gha'),
-  /** "open_pr" opens a PR with the files; "files" just returns/persists them. */
-  action: z.enum(['open_pr', 'files']).default('open_pr'),
+  /**
+   * "open_pr" opens a REAL PR with the files; "files" persists the
+   * installation and returns the files (zip download path); "preview"
+   * builds and returns the SAME `CiExport` shape with ZERO GitHub calls and
+   * ZERO DB writes — used by the wizard's debounced Preview step so it
+   * never opens a PR as a side effect of typing.
+   */
+  action: z.enum(['open_pr', 'files', 'preview']).default('open_pr'),
   post_as: z.enum(['github_review', 'pr_comment', 'none']).default('github_review'),
   triggers: z.array(z.string()).default(['opened', 'synchronize', 'reopened']),
   base: z.string().default('main'),
@@ -243,6 +249,13 @@ export const CiInstallation = z.object({
   repo: z.string(),
   target_type: CiTarget,
   installed_at: z.string(),
+  /** ADDENDUM v2 — "Workflow version": the `WORKFLOW_VERSION` embedded in
+   *  the generated workflow at the export that (re)installed this row. `null`
+   *  for rows created before this field existed. */
+  workflow_version: z.string().nullable(),
+  /** Set when `action:'open_pr'` succeeded for this installation; `null` for
+   *  a zip-only (`action:'files'`) install or before any PR was opened. */
+  pr_url: z.string().nullable(),
 });
 export type CiInstallation = z.infer<typeof CiInstallation>;
 
@@ -251,6 +264,13 @@ export const CiExport = z.object({
   installation: CiInstallation,
   files: z.array(CiFile),
   pr_url: z.string().nullable(),
+  /**
+   * Per-installation ingest bearer token, shown ONCE so the wizard can tell
+   * the user to add it as the target repo's `DEVDIGEST_INGEST_TOKEN`
+   * secret. Only the hash is ever persisted server-side; `null` for
+   * `action:'preview'` (no installation is persisted).
+   */
+  ingest_token: z.string().nullable(),
 });
 export type CiExport = z.infer<typeof CiExport>;
 
@@ -261,6 +281,11 @@ export type CiRunStatus = z.infer<typeof CiRunStatus>;
 export const CiRun = z.object({
   id: z.string(),
   ci_installation_id: z.string().nullable(),
+  /** The installation's target repo ("owner/name"), denormalized via a join
+   *  to `ci_installations` — lets the CI Runs page show the repo column
+   *  without parsing `github_url` (which is usually null). `null` when the
+   *  run's installation was deleted (EC-7, `onDelete: 'set null'`). */
+  repo: z.string().nullable(),
   pr_number: z.number().int().nullable(),
   ran_at: z.string().nullable(),
   status: z.string().nullable(),
@@ -268,8 +293,16 @@ export const CiRun = z.object({
   cost_usd: z.number().nullable(),
   github_url: z.string().nullable(),
   source: z.string().nullable(),
+  /** Agent NAME (denormalized via a join) — for display; use `agent_id` to
+   *  link. `null`/absent when the run's installation was deleted (EC-7). */
   agent: z.string().nullish(),
-  duration_s: z.number().nullish(),
+  /** Agent id, when resolvable (same join/nullability as `agent`). */
+  agent_id: z.string().nullish(),
+  /** Review verdict from `deriveVerdict` at ingest time — distinct from
+   *  `status` (did the RUN complete) — `null` for rows ingested/seeded
+   *  before this column existed. */
+  verdict: Verdict.nullable(),
+  duration_ms: z.number().int().nullable(),
 });
 export type CiRun = z.infer<typeof CiRun>;
 

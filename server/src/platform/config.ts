@@ -31,6 +31,19 @@ const EnvSchema = z.object({
   // three canonical roots; operators may add/replace via env. Each segment is
   // a single relative path component — no '/', '\', or '..' (see loadConfig).
   CONTEXT_DOC_ROOTS: z.string().optional(),
+  // Export to CI (SPEC-05): where the already-built agent-runner bundle
+  // (`ncc build` output) lives on disk. Default assumes the standard sibling
+  // layout (`<repo-root>/agent-runner/dist/index.js`) relative to server/'s
+  // own cwd. This module never builds the bundle — a missing file is a valid
+  // "not built yet" state (see RunnerBundle adapter).
+  RUNNER_BUNDLE_PATH: z.string().optional(),
+  // ADDENDUM v2 — ingest auth contract: the base URL the GENERATED workflow
+  // POSTs `devdigest-result.json` to (`${DEVDIGEST_INGEST_URL}/ci/ingest`).
+  // Not a secret — baked as a literal into the exported workflow file, so it
+  // must be this DevDigest instance's own publicly-reachable address.
+  // Defaults to localhost for dev; production deployments MUST set this or
+  // every exported workflow will point at an unreachable URL.
+  DEVDIGEST_INGEST_URL: z.string().optional(),
   API_PORT: z.coerce.number().int().default(3001),
   WEB_PORT: z.coerce.number().int().default(3000),
   DEVDIGEST_CLONE_DIR: z.string().optional(),
@@ -69,6 +82,10 @@ export type AppConfig = {
    * attachable `.md` context docs. Default `['specs', 'docs', 'insights']`.
    */
   contextDocRoots: string[];
+  /** Absolute path to the built CI runner bundle (`agent-runner/dist/index.js`). */
+  runnerBundlePath: string;
+  /** Base URL a generated CI workflow POSTs `devdigest-result.json` to. */
+  ingestUrl: string;
 };
 
 const DEFAULT_CONTEXT_DOC_ROOTS = ['specs', 'docs', 'insights'];
@@ -92,6 +109,13 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const cloneDirRaw =
     parsed.DEVDIGEST_CLONE_DIR ?? join(homedir(), '.devdigest', 'workspace');
   const cloneDir = isAbsolute(cloneDirRaw) ? cloneDirRaw : resolve(process.cwd(), cloneDirRaw);
+  // server/'s own cwd (dev/test) is the `server/` directory, one level below
+  // the repo root — so the default resolves to `<repo-root>/agent-runner/dist/index.js`.
+  const runnerBundleRaw =
+    parsed.RUNNER_BUNDLE_PATH ?? join('..', 'agent-runner', 'dist', 'index.js');
+  const runnerBundlePath = isAbsolute(runnerBundleRaw)
+    ? runnerBundleRaw
+    : resolve(process.cwd(), runnerBundleRaw);
   return {
     databaseUrl: parsed.DATABASE_URL,
     apiPort: parsed.API_PORT,
@@ -104,5 +128,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     embeddingsEnabled: parsed.EMBEDDINGS_ENABLED === 'true',
     repoIntelEnabled: parsed.REPO_INTEL_ENABLED !== 'false',
     contextDocRoots: parseContextDocRoots(parsed.CONTEXT_DOC_ROOTS),
+    runnerBundlePath,
+    ingestUrl: parsed.DEVDIGEST_INGEST_URL ?? `http://localhost:${parsed.API_PORT}`,
   };
 }
